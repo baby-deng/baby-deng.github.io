@@ -1,0 +1,143 @@
+<div id="multi-job-candidate-ledger">
+  <style>
+    #multi-job-candidate-ledger { color-scheme: light dark; --background: light-dark(#f7faff,#101827); --foreground: light-dark(#101828,#f2f4f7); --card: light-dark(#ffffff,#172033); --card-foreground: light-dark(#101828,#f2f4f7); --primary: light-dark(#1671d9,#65a7ff); --primary-foreground: light-dark(#ffffff,#071426); --muted: light-dark(#eef3f8,#222d43); --muted-foreground: light-dark(#667085,#a9b4c7); --border: light-dark(#d8e1eb,#34425a); --input: light-dark(#cbd7e5,#46546b); color: var(--foreground); font-family: ui-sans-serif, system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; }
+    #multi-job-candidate-ledger * { box-sizing: border-box; }
+    #multi-job-candidate-ledger .mjl-shell { padding: 24px; border: 1px solid var(--border); border-radius: 18px; background: linear-gradient(140deg, color-mix(in srgb, var(--primary) 8%, var(--background)), var(--background) 40%); }
+    #multi-job-candidate-ledger .mjl-top, #multi-job-candidate-ledger .mjl-toolbar, #multi-job-candidate-ledger .mjl-project-row, #multi-job-candidate-ledger .mjl-panel-head, #multi-job-candidate-ledger .mjl-stats, #multi-job-candidate-ledger .mjl-import-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+    #multi-job-candidate-ledger .mjl-top { align-items: flex-start; justify-content: space-between; margin-bottom: 18px; }
+    #multi-job-candidate-ledger .mjl-kicker { margin: 0 0 7px; color: var(--primary); letter-spacing: .14em; font-weight: 500; }
+    #multi-job-candidate-ledger h2, #multi-job-candidate-ledger h3 { margin: 0; }
+    #multi-job-candidate-ledger .mjl-sub, #multi-job-candidate-ledger .mjl-muted { color: var(--muted-foreground); }
+    #multi-job-candidate-ledger .mjl-sub { margin: 6px 0 0; }
+    #multi-job-candidate-ledger input, #multi-job-candidate-ledger select, #multi-job-candidate-ledger textarea, #multi-job-candidate-ledger button { border: 1px solid var(--input); border-radius: 9px; background: var(--background); color: var(--foreground); padding: 8px 10px; font: inherit; }
+    #multi-job-candidate-ledger input, #multi-job-candidate-ledger select, #multi-job-candidate-ledger button { min-height: 38px; }
+    #multi-job-candidate-ledger button { cursor: pointer; font-weight: 500; }
+    #multi-job-candidate-ledger .mjl-primary { border-color: var(--primary); background: var(--primary); color: var(--primary-foreground); }
+    #multi-job-candidate-ledger .mjl-project { padding: 14px; border: 1px solid color-mix(in srgb, var(--primary) 25%, var(--border)); border-radius: 12px; background: color-mix(in srgb, var(--primary) 7%, var(--card)); }
+    #multi-job-candidate-ledger .mjl-project-row + .mjl-project-row { margin-top: 10px; }
+    #multi-job-candidate-ledger .mjl-project-row label { color: var(--muted-foreground); }
+    #multi-job-candidate-ledger .mjl-grow { flex: 1 1 180px; }
+    #multi-job-candidate-ledger #mjl-requirements { width: 100%; min-height: 62px; resize: vertical; }
+    #multi-job-candidate-ledger .mjl-stats { margin: 15px 0; }
+    #multi-job-candidate-ledger .mjl-stat { padding: 9px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--card); }
+    #multi-job-candidate-ledger .mjl-stat strong { color: var(--primary); }
+    #multi-job-candidate-ledger details { margin-bottom: 15px; border: 1px solid var(--border); border-radius: 12px; background: var(--card); }
+    #multi-job-candidate-ledger summary { padding: 12px 14px; color: var(--primary); cursor: pointer; font-weight: 500; }
+    #multi-job-candidate-ledger .mjl-import { padding: 0 14px 14px; }
+    #multi-job-candidate-ledger #mjl-batch-input { width: 100%; min-height: 120px; resize: vertical; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    #multi-job-candidate-ledger .mjl-format { margin: 7px 0 10px; color: var(--muted-foreground); }
+    #multi-job-candidate-ledger .mjl-notice { min-height: 22px; color: var(--primary); }
+    #multi-job-candidate-ledger .mjl-panel { overflow: hidden; border: 1px solid var(--border); border-radius: 15px; background: var(--card); color: var(--card-foreground); }
+    #multi-job-candidate-ledger .mjl-panel-head { justify-content: space-between; padding: 17px; border-bottom: 1px solid var(--border); }
+    #multi-job-candidate-ledger .mjl-table-wrap { overflow-x: auto; }
+    #multi-job-candidate-ledger table { width: 100%; min-width: 1220px; border-collapse: collapse; }
+    #multi-job-candidate-ledger th, #multi-job-candidate-ledger td { padding: 11px 10px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: middle; }
+    #multi-job-candidate-ledger th { background: var(--muted); color: var(--muted-foreground); font-weight: 500; white-space: nowrap; }
+    #multi-job-candidate-ledger tbody tr:hover { background: color-mix(in srgb, var(--primary) 5%, transparent); }
+    #multi-job-candidate-ledger .mjl-name, #multi-job-candidate-ledger .mjl-open { color: var(--primary); font-weight: 500; text-decoration: none; }
+    #multi-job-candidate-ledger .mjl-id { display: block; margin-top: 3px; color: var(--muted-foreground); }
+    #multi-job-candidate-ledger td input, #multi-job-candidate-ledger td select { width: 100%; min-width: 108px; }
+    #multi-job-candidate-ledger .mjl-empty { padding: 28px; color: var(--muted-foreground); text-align: center; }
+    @media (max-width: 760px) { #multi-job-candidate-ledger .mjl-shell { padding: 14px; } #multi-job-candidate-ledger .mjl-top, #multi-job-candidate-ledger .mjl-panel-head { align-items: stretch; flex-direction: column; } #multi-job-candidate-ledger .mjl-toolbar > * { flex: 1 1 auto; } }
+  </style>
+  <section class="mjl-shell" aria-label="多岗位人才筛选台账">
+    <header class="mjl-top">
+      <div><p class="mjl-kicker">TALENT DELIVERY / LEDGER</p><h2>岗位候选人筛选台账</h2><p class="mjl-sub">一岗一名单 · 分批追加 · 人才库ID去重 · 状态与备注本机保存</p></div>
+      <div class="mjl-toolbar">
+        <input id="mjl-search" type="search" placeholder="搜索姓名、专业、地区、备注">
+        <select id="mjl-status-filter" aria-label="跟进状态筛选"><option value="">全部状态</option><option>待评估</option><option>重点关注</option><option>待联系</option><option>跟进中</option><option>暂缓</option><option>不考虑</option></select>
+        <button id="mjl-export-csv" class="mjl-primary" type="button">导出当前岗位 CSV</button>
+        <button id="mjl-export-backup" type="button">备份全部岗位</button>
+        <label><input id="mjl-restore-backup" type="file" accept="application/json,.json">恢复备份</label>
+      </div>
+    </header>
+    <section class="mjl-project">
+      <div class="mjl-project-row"><label for="mjl-job-select">当前岗位</label><select id="mjl-job-select" class="mjl-grow"></select><button id="mjl-new-job" type="button">＋ 新增岗位</button></div>
+      <div class="mjl-project-row"><input id="mjl-hospital" class="mjl-grow" aria-label="医院" placeholder="医院名称"><input id="mjl-role" class="mjl-grow" aria-label="科室或岗位" placeholder="科室 / 岗位"><button id="mjl-save-job" class="mjl-primary" type="button">保存岗位资料</button></div>
+      <div class="mjl-project-row"><textarea id="mjl-requirements" placeholder="记录岗位筛选要求"></textarea></div>
+    </section>
+    <div class="mjl-stats"><span class="mjl-stat">名单 <strong id="mjl-total">0</strong> 人</span><span class="mjl-stat">已追加 <strong id="mjl-batches">0</strong> 批</span><span class="mjl-stat">当前筛选显示 <strong id="mjl-visible">0</strong> 人</span><span class="mjl-stat">上次筛选 <strong id="mjl-last-screened">尚未记录</strong></span><span class="mjl-muted">每次重新扫描动态人才库，并按简历更新时间从新到旧核验</span></div>
+    <details id="mjl-import-details">
+      <summary>追加下一批人选（默认每批20人，自动排除已有ID）</summary>
+      <div class="mjl-import">
+        <textarea id="mjl-batch-input" placeholder="粘贴候选人数据，每行一人"></textarea>
+        <p class="mjl-format">列顺序：人才库ID｜姓名｜年龄｜学历｜专业｜现居地｜意向地区｜简历更新日期｜简历链接｜匹配证据。支持制表符或英文逗号分隔。已有ID会刷新资料，但保留人工状态和备注。</p>
+        <div class="mjl-import-actions"><button id="mjl-add-batch" class="mjl-primary" type="button">去重并追加为新批次</button><button id="mjl-clear-batch" type="button">清空输入</button><span id="mjl-notice" class="mjl-notice"></span></div>
+      </div>
+    </details>
+    <section class="mjl-panel">
+      <div class="mjl-panel-head"><div><h3 id="mjl-title">候选人名单</h3><span id="mjl-requirement-summary" class="mjl-muted"></span></div><span class="mjl-muted">修改状态和备注后自动保存</span></div>
+      <div class="mjl-table-wrap"><table><thead><tr><th>批次</th><th>姓名</th><th>年龄</th><th>学历</th><th>专业</th><th>现居地</th><th>意向地区</th><th>简历更新</th><th>跟进状态</th><th>备注</th><th>简历</th></tr></thead><tbody id="mjl-body"></tbody></table><div id="mjl-empty" class="mjl-empty" hidden>当前岗位还没有人选</div></div>
+    </section>
+  </section>
+  <script>
+    (() => {
+      const root = document.getElementById('multi-job-candidate-ledger');
+      const seedRows = [
+        ['8442743','何沛邦',27,'博士','临床医学','武汉市','宁波市、湖州市、杭州市','2026-08-26'],['7583176','刘瀚元',26,'博士','临床医学','湖北','上海','2026-08-26'],['2409677','龚振宇',33,'博士','神经外科学','德国','杭州市、上海、南京市、苏州市','2026-08-23'],['5706730','钟俊',33,'博士','临床医学','重庆','江苏','2026-08-22'],['7922593','胡奕安',29,'博士','神经外科','石家庄市','杭州市','2026-08-19'],['8365358','田一昕',30,'博士','神经外科','广州市','上海、杭州市、苏州市、无锡市','2026-08-15'],['7745358','王凤婷',29,'博士','外科学','上海黄浦区','上海','2026-08-07'],['7996725','陈鋆泽',25,'博士','临床医学','南宁市','上海、浙江、江苏','2026-08-06'],['3549664','吴易洋',31,'博士','神经外科','德国','全国','2026-08-06'],['7892685','郑葆龙',34,'博士','医学 / 神经外科','内蒙古','全国','2026-08-02'],['7794929','金奕玏',26,'博士','临床医学（本博连读）','广州市','杭州市、温州市、台州市','2026-07-31'],['8001723','左晓坤',34,'博士','外科学','上海','上海','2026-07-26'],['2755166','王安琪',33,'博士','神经外科学 / 脑外科','苏州市','浙江、无锡市、苏州市、南通市','2026-07-20'],['4193064','刘春阳',29,'博士','神经外科','哈尔滨市','全国','2026-07-06'],['7718409','刘杰',29,'博士','神经外科','北京东城区','上海','2026-06-22'],['4028961','艾热夏提',33,'博士','外科学','广州市','上海','2026-06-21'],['4166095','孙叶盛',31,'博士','神经科学 / 外科学','广东','上海','2026-06-16'],['5738598','唐玥',29,'博士','神经病学','重庆','上海、南京市、苏州市、杭州市','2026-06-14'],['3595036','刘辉',33,'博士','儿科学 / 麻醉学','重庆','杭州市','2026-06-01'],['8249824','秦磊',32,'博士','临床医学 / 神经外科','泰州市','江苏、浙江','2026-05-22'],['8219499','尚玮',33,'博士','外科学','大连市','全国','2026-05-12'],['6469666','李克',34,'博士','神经外科','洛阳市','浙江、苏州市、上海浦东','2026-05-10'],['5743907','谢胜强',29,'博士','外科学（神经外科）','北京','上海','2026-05-07'],['5189004','陈智利',30,'博士','临床医学 / 神经外科','福建','上海','2026-05-07'],['3931336','张弘池',31,'博士','外科','上海','全国','2026-04-27'],['6086322','齐羿',30,'博士','神经外科学 / 脑外科','日本','全国','2026-04-22'],['8118459','黄周扬',26,'博士','临床医学','成都市','全国','2026-04-14'],['4152855','李健',34,'博士','临床医学 / 外科学','天津','上海','2026-04-11'],['7739109','张子豪',28,'博士','神经外科','北京西城区','全国','2026-04-11'],['7812390','胡昱晨',26,'博士','临床医学 / 神经外科','广州市','南京市、无锡市、杭州市','2026-04-06']
+      ];
+      const seedCandidates = seedRows.map((r,i) => ({id:r[0],name:r[1],age:r[2],education:r[3],major:r[4],location:r[5],intent:r[6],updated:r[7],url:`https://www.jobmd.cn/pc/resume/standard/${r[0]}`,batch:i<20?1:2,status:'待评估',note:''}));
+      const key = 'multi-job-candidate-ledger-v1';
+      const seed = {activeJobId:'job-neurosurgery-20260827',jobs:[{id:'job-neurosurgery-20260827',hospital:'待填写医院',role:'神经外科',requirements:'神经外科；意向江浙沪或全国；博士；年龄不超过35岁；截至2026-08-27已毕业；排除联系或推荐记录中出现“杭州市一”“杭州市一城北”的人选。',createdAt:'2026-08-27',lastScreenedAt:'2026-08-27T09:20:00+08:00',candidates:seedCandidates}]};
+      let state;
+      try { state=JSON.parse(localStorage.getItem(key)||'null')||seed; } catch (_) { state=seed; }
+      const testJobId = 'job-zhejiang-veterans-neurology-20260827';
+      if (!state.jobs.some(j => j.id === testJobId)) {
+        const testRows = [
+          ['3086097','郭彪',35,'硕士','中医学（神经内科方向）','常德市','中山、东莞、长沙、益阳、深圳','2026-08-26','副高','负责病房及神经介入工作，可开展脑血管造影及神经介入手术，曾进修神经介入一年'],
+          ['8439785','胡珊',40,'硕士','神经内科','岳阳市','广州','2026-08-25','副高','具备成熟神经介入技术，可独立完成全脑血管造影及相关操作'],
+          ['3041320','单愿军',39,'硕士','中医内科学','襄阳市','全国','2026-08-23','副高','可开展机械取栓、颅内外动脉支架及动脉瘤介入栓塞'],
+          ['146141','陈洪',43,'硕士','神经病学','旌阳区','成都、深圳','2026-08-23','副高','曾任神经介入亚专业组长，掌握机械取栓及多类血管支架成形术'],
+          ['4688130','王朋',44,'硕士','神经内科','宿州市','浙江、江西、海口、昆明、新疆','2026-07-24','正高','累计完成脑血管介入手术3000余台，可独立开展取栓、支架及动脉瘤栓塞'],
+          ['3305210','姜波',43,'硕士','基础医学 / 临床医学','巴彦淖尔市','广东、江苏、浙江','2026-08-22','副高','北京天坛医院神经介入进修一年，负责科室神经介入手术治疗'],
+          ['7973180','吴有林',44,'硕士','神经病学','成都市','深圳、成都','2026-08-21','副高','精通神经介入诊疗，主导脑血管病微创治疗并有多院进修经历'],
+          ['6966617','杨守涛',41,'硕士','临床医学','聊城市','全国','2026-08-21','副高','山东大学齐鲁医院进修神经介入一年，长期从事神经内科'],
+          ['4134271','艾长思',40,'硕士','卫生管理学 / 临床医学','黑龙江','全国','2026-08-20','副高','负责神经介入工作，年手术量500台以上，开展支架、取栓及栓塞'],
+          ['5306204','郭金刚',41,'硕士','神经病学','保定市','北京','2026-08-20','副高','承担脑血管介入手术，具有神经内科临床与科室管理经验'],
+          ['209940','刘生',42,'硕士','精神卫生 / 临床医学','柳州市','全国','2026-08-20','正高','神经介入工作10年，具备四级资质，累计介入手术5000台以上'],
+          ['4261405','秦定',43,'硕士','神经病学','西安市','全国','2026-08-19','副高','现任神经介入中心主任，曾任卒中中心神经介入医疗组组长'],
+          ['8428811','王健',44,'硕士','神经病学','江苏','苏州、南京、杭州','2026-08-18','正高','省级三甲医院神经介入组长，擅长取栓及颅内外动脉支架'],
+          ['7301291','陈平',45,'硕士','神经病学','湖北','全国','2026-08-18','副高','作为学科带头人开展脑血管造影、机械取栓及介入治疗'],
+          ['8417663','鲁红伟',43,'硕士','中医内科学','开封市','三亚、海口','2026-08-17','副高','从事脑血管病神经介入工作13年，具备独立介入手术能力'],
+          ['2358494','乾栋梁',39,'博士','神经病学 / 神经外科脑血管病','上海','南京、杭州、上海、广州','2026-08-17','副高','长期从事脑血管病神经介入治疗，可处理复杂脑脊髓血管病变'],
+          ['2737261','李江',47,'博士','神经病学','广东','江苏、浙江、深圳','2026-08-15','正高','神经内科介入经验16年，独立完成多类支架、再通及取栓，累计近万例'],
+          ['6886671','陈杰',42,'硕士','神经病学','太原市','太原','2026-08-14','副高','擅长脑血管介入诊疗，曾在西京医院介入团队进修一年'],
+          ['2490673','陈永平',40,'硕士','神经病学','万州区','全国','2026-08-13','副高','擅长神经介入，可独立完成颅内外支架及多类取栓术'],
+          ['272757','李兆圣',45,'硕士','基础医学 / 临床医学','金华市','山东、北京','2026-08-12','副高','掌握急性脑梗死机械取栓及DSA技术，具有神经内科临床经历']
+        ];
+        state.jobs.push({
+          id:testJobId,
+          hospital:'浙江省荣军医院',
+          role:'神经内科（介入方向）',
+          requirements:'男性；硕士及以上学历；副高及以上职称；副高年龄不超过45岁、正高年龄不超过50岁；具有可核验的神经介入或脑血管介入工作经验。',
+          createdAt:'2026-08-27',
+          lastScreenedAt:'2026-08-27T10:10:00+08:00',
+          candidates:testRows.map(r=>({id:r[0],name:r[1],age:r[2],education:r[3],major:r[4],location:r[5],intent:r[6],updated:r[7],url:`https://www.jobmd.cn/pc/resume/standard/${r[0]}`,batch:1,status:'待评估',note:`${r[8]}｜介入证据：${r[9]}`}))
+        });
+        state.activeJobId=testJobId;
+      }
+      try { localStorage.setItem(key, JSON.stringify(state)); } catch (_) {}
+      const q=s=>root.querySelector(s), jobSelect=q('#mjl-job-select'), hospital=q('#mjl-hospital'), role=q('#mjl-role'), requirements=q('#mjl-requirements'), search=q('#mjl-search'), statusFilter=q('#mjl-status-filter'), body=q('#mjl-body'), notice=q('#mjl-notice');
+      const esc=v=>String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+      const save=()=>{try{localStorage.setItem(key,JSON.stringify(state));}catch(_){}};
+      const active=()=>state.jobs.find(j=>j.id===state.activeJobId)||state.jobs[0];
+      function jobLabel(j){return `${j.hospital} · ${j.role}（${j.candidates.length}人）`;}
+      function renderJobs(){jobSelect.innerHTML=state.jobs.map(j=>`<option value="${esc(j.id)}"${j.id===state.activeJobId?' selected':''}>${esc(jobLabel(j))}</option>`).join('');}
+      function filtered(j){const term=search.value.trim().toLowerCase();return j.candidates.filter(c=>{const hay=[c.name,c.major,c.location,c.intent,c.note,c.evidence,c.id].join(' ').toLowerCase();return(!term||hay.includes(term))&&(!statusFilter.value||c.status===statusFilter.value);}).sort((a,b)=>String(b.updated||'').localeCompare(String(a.updated||''))||Number(b.batch||0)-Number(a.batch||0)||String(a.id).localeCompare(String(b.id)));}
+      function render(){const j=active();if(!j)return;renderJobs();hospital.value=j.hospital;role.value=j.role;requirements.value=j.requirements;q('#mjl-title').textContent=`${j.hospital} · ${j.role}候选人名单`;q('#mjl-requirement-summary').textContent=j.requirements;q('#mjl-total').textContent=j.candidates.length;q('#mjl-batches').textContent=Math.max(0,...j.candidates.map(c=>Number(c.batch)||0));q('#mjl-last-screened').textContent=j.lastScreenedAt?new Date(j.lastScreenedAt).toLocaleString('zh-CN',{hour12:false}):'尚未记录';const rows=filtered(j);q('#mjl-visible').textContent=rows.length;q('#mjl-empty').hidden=rows.length>0;body.innerHTML=rows.map(c=>`<tr data-id="${esc(c.id)}"><td>第${esc(c.batch)}批</td><td><a class="mjl-name" href="${esc(c.url)}" target="_blank" rel="noopener">${esc(c.name)}</a><span class="mjl-id">ID ${esc(c.id)}</span></td><td>${esc(c.age)}</td><td>${esc(c.education)}</td><td>${esc(c.major)}</td><td>${esc(c.location)}</td><td>${esc(c.intent)}</td><td>${esc(c.updated)}</td><td><select class="mjl-row-status" aria-label="${esc(c.name)}跟进状态">${['待评估','重点关注','待联系','跟进中','暂缓','不考虑'].map(s=>`<option${s===c.status?' selected':''}>${s}</option>`).join('')}</select></td><td><input class="mjl-row-note" value="${esc(c.note)}" placeholder="填写备注" aria-label="${esc(c.name)}备注" title="${esc(c.evidence||'')}"></td><td><a class="mjl-open" href="${esc(c.url)}" target="_blank" rel="noopener">打开简历 ↗</a></td></tr>`).join('');}
+      function download(name,text,type){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);}
+      jobSelect.addEventListener('change',()=>{state.activeJobId=jobSelect.value;save();render();});
+      q('#mjl-save-job').addEventListener('click',()=>{const j=active();j.hospital=hospital.value.trim()||'待填写医院';j.role=role.value.trim()||'待填写岗位';j.requirements=requirements.value.trim();save();notice.textContent='岗位资料已保存';render();});
+      q('#mjl-new-job').addEventListener('click',()=>{const id=`job-${Date.now()}`;state.jobs.push({id,hospital:'待填写医院',role:'待填写岗位',requirements:'',createdAt:new Date().toISOString().slice(0,10),lastScreenedAt:null,candidates:[]});state.activeJobId=id;save();render();hospital.focus();});
+      search.addEventListener('input',render);statusFilter.addEventListener('change',render);
+      body.addEventListener('input',e=>{const tr=e.target.closest('tr[data-id]');if(!tr)return;const c=active().candidates.find(x=>x.id===tr.dataset.id);if(!c)return;if(e.target.classList.contains('mjl-row-note'))c.note=e.target.value;save();});
+      body.addEventListener('change',e=>{const tr=e.target.closest('tr[data-id]');if(!tr)return;const c=active().candidates.find(x=>x.id===tr.dataset.id);if(!c)return;if(e.target.classList.contains('mjl-row-status'))c.status=e.target.value;save();});
+      q('#mjl-clear-batch').addEventListener('click',()=>{q('#mjl-batch-input').value='';notice.textContent='';});
+      q('#mjl-add-batch').addEventListener('click',()=>{const j=active(),raw=q('#mjl-batch-input').value.trim();if(!raw){notice.textContent='请先粘贴候选人数据';return;}const lines=raw.split(/\r?\n/).filter(Boolean),batch=Math.max(0,...j.candidates.map(c=>Number(c.batch)||0))+1;let added=0,refreshed=0,invalid=0;for(const line of lines){const parts=line.includes('\t')?line.split('\t'):line.split(',');const [id,name,age,education,major,location,intent,updated,url,evidence]=parts.map(v=>(v||'').trim());if(!/^\d+$/.test(id)||!name){invalid++;continue;}const existing=j.candidates.find(c=>c.id===id);if(existing){Object.assign(existing,{name,age,education:education||existing.education,major,location,intent,updated:updated||existing.updated,url:url||existing.url,evidence:evidence||existing.evidence,lastSeenAt:new Date().toISOString()});refreshed++;continue;}j.candidates.push({id,name,age,education:education||'待核验',major,location,intent,updated,url:url||`https://www.jobmd.cn/pc/resume/standard/${id}`,evidence,batch,status:'待评估',note:'',selectedAt:new Date().toISOString(),lastSeenAt:new Date().toISOString()});added++;}j.lastScreenedAt=new Date().toISOString();save();q('#mjl-batch-input').value='';notice.textContent=added?`第${batch}批新增${added}人；刷新已有资料${refreshed}人，格式无效${invalid}人`:`没有新增人选；已刷新${refreshed}人，格式无效${invalid}人，不创建空批次`;render();});
+      q('#mjl-export-csv').addEventListener('click',()=>{const j=active(),rows=[['批次','人才库ID','姓名','年龄','学历','专业','现居地','意向地区','简历更新','跟进状态','备注','简历链接'],...j.candidates.map(c=>[c.batch,c.id,c.name,c.age,c.education,c.major,c.location,c.intent,c.updated,c.status,c.note,c.url])];const csv='\ufeff'+rows.map(r=>r.map(v=>`"${String(v??'').replace(/"/g,'""')}"`).join(',')).join('\r\n');download(`${j.hospital}-${j.role}-候选人.csv`,csv,'text/csv;charset=utf-8');});
+      q('#mjl-export-backup').addEventListener('click',()=>download(`岗位候选人台账备份-${new Date().toISOString().slice(0,10)}.json`,JSON.stringify(state,null,2),'application/json;charset=utf-8'));
+      q('#mjl-restore-backup').addEventListener('change',async e=>{const file=e.target.files?.[0];if(!file)return;try{const restored=JSON.parse(await file.text());if(!restored||!Array.isArray(restored.jobs)||!restored.jobs.length)throw new Error('invalid');state=restored;if(!state.jobs.some(j=>j.id===state.activeJobId))state.activeJobId=state.jobs[0].id;save();notice.textContent=`已恢复${state.jobs.length}个岗位`;render();}catch(_){notice.textContent='备份文件无法识别，未覆盖当前数据';}finally{e.target.value='';}});
+      render();
+    })();
+  </script>
+</div>
