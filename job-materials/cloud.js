@@ -77,23 +77,28 @@
       requirementsByJob.set(requirement.job_id, items);
     });
 
-    return (jobsResult.data || [])
-      .filter((job) => !materialJobIds.has(job.id))
-      .map((job) => {
-        const hospital = hospitals.get(job.hospital_id) || {};
-        return {
-          id: job.id,
-          city: hospital.city || "",
-          organization: hospital.standard_name || "医院待补充",
-          department: job.department || "",
-          role: job.role || "",
-          operationsStatus: job.status || "",
-          updatedAt: String(job.updated_at || "").slice(0, 10),
-          sourceBrief: job.raw_text || "",
-          compensationPolicy: job.compensation_policy || "",
-          requirements: requirementsByJob.get(job.id) || [],
-        };
+    const sourceJobs = [];
+    const seenJobs = new Set();
+    (jobsResult.data || []).forEach((job) => {
+      if (materialJobIds.has(job.id)) return;
+      const hospital = hospitals.get(job.hospital_id) || {};
+      const identity = [job.hospital_id, job.department, job.role].join("::");
+      if (seenJobs.has(identity)) return;
+      seenJobs.add(identity);
+      sourceJobs.push({
+        id: job.id,
+        city: hospital.city || "",
+        organization: hospital.standard_name || "医院待补充",
+        department: job.department || "",
+        role: job.role || "",
+        operationsStatus: job.status || "",
+        updatedAt: String(job.updated_at || "").slice(0, 10),
+        sourceBrief: job.raw_text || "",
+        compensationPolicy: job.compensation_policy || "",
+        requirements: requirementsByJob.get(job.id) || [],
       });
+    });
+    return sourceJobs;
   }
 
   window.materialsCloud = Object.freeze({
