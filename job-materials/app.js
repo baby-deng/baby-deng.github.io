@@ -112,6 +112,76 @@ function enrichCityData(jobs) {
   return enrichOrganizationData(cityJobs);
 }
 
+function normalizeCityKey(city) {
+  return String(city || "")
+    .trim()
+    .replace(/\s+/g, "")
+    .replace(/市$/, "")
+    .toLowerCase();
+}
+
+function cityProfileScore(job) {
+  return Object.values(job?.sections?.city || {}).filter((value) => String(value || "").trim()).length;
+}
+
+function cityProfileJobs(city, jobs = state.data.jobs) {
+  const key = normalizeCityKey(city);
+  if (!key) return [];
+  return jobs
+    .filter((job) => normalizeCityKey(job.city) === key)
+    .sort((left, right) => {
+      const scoreDifference = cityProfileScore(right) - cityProfileScore(left);
+      if (scoreDifference) return scoreDifference;
+      return String(right.updatedAt || "").localeCompare(String(left.updatedAt || ""));
+    });
+}
+
+function canonicalCityName(city, jobs = state.data.jobs) {
+  return cityProfileJobs(city, jobs)[0]?.city || String(city || "").trim();
+}
+
+function synchronizeSharedCityProfiles(jobs) {
+  const groups = new Map();
+  jobs.forEach((job) => {
+    const key = normalizeCityKey(job.city);
+    if (!key) return;
+    const group = groups.get(key) || [];
+    group.push(job);
+    groups.set(key, group);
+  });
+
+  groups.forEach((group) => {
+    const ranked = cityProfileJobs(group[0].city, group);
+    const sharedCity = emptySections().city;
+    ranked.forEach((job) => {
+      Object.entries(job.sections?.city || {}).forEach(([field, value]) => {
+        if (!String(sharedCity[field] || "").trim() && String(value || "").trim()) {
+          sharedCity[field] = clone(value);
+        }
+      });
+    });
+
+    const sharedName = ranked[0]?.city || group[0].city;
+    group.forEach((job) => {
+      job.city = sharedName;
+      if (!job.sections) job.sections = emptySections();
+      job.sections.city = clone(sharedCity);
+    });
+  });
+  return jobs;
+}
+
+function applyCityProfileToMatchingJobs(jobs, city, cityProfile) {
+  const key = normalizeCityKey(city);
+  if (!key) return;
+  jobs.forEach((job) => {
+    if (normalizeCityKey(job.city) !== key) return;
+    job.city = city;
+    if (!job.sections) job.sections = emptySections();
+    job.sections.city = clone(cityProfile || emptySections().city);
+  });
+}
+
 function enrichOrganizationData(jobs) {
   return jobs.map((job) => {
     const enrichment = ORGANIZATION_ENRICHMENTS[job.organization];
@@ -173,7 +243,7 @@ async function bootstrapApp() {
 
 function normalizeWorkspace(data) {
   return {
-    jobs: enrichCityData(Array.isArray(data?.jobs) ? data.jobs : []),
+    jobs: synchronizeSharedCityProfiles(enrichCityData(Array.isArray(data?.jobs) ? data.jobs : [])),
     settings: { ...DEFAULT_SETTINGS, ...(data?.settings || {}) },
   };
 }
@@ -772,8 +842,9 @@ function readNewJobForm() {
   const form = document.getElementById("new-job-form");
   if (!form.reportValidity()) return null;
   const data = new FormData(form);
+  const city = String(data.get("city") || "").trim();
   return {
-    city: String(data.get("city") || "").trim(),
+    city: canonicalCityName(city),
     organization: String(data.get("organization") || "").trim(),
     department: String(data.get("department") || "").trim(),
     role: String(data.get("role") || "").trim(),
@@ -783,10 +854,13 @@ function readNewJobForm() {
 
 function buildNewJobSections(base, collectPublicData) {
   const sections = collectPublicData ? createCollectedSections(base) : emptySections();
+  const citySourceJob = cityProfileJobs(base.city)[0];
+  if (citySourceJob?.sections?.city) sections.city = clone(citySourceJob.sections.city);
+
   const sourceJob = newestFirst(state.data.jobs.filter((job) => job.organization === base.organization))[0];
   if (!sourceJob) return sections;
 
-  sections.city = clone(sourceJob.sections.city || sections.city);
+  sections.city = clone(sourceJob.sections.city || citySourceJob?.sections?.city || sections.city);
   const sharedHospitalFields = [
     "hospitalNature", "grade", "hospitalType", "affiliation", "history", "campuses",
     "locationPosition", "campusAccess", "publicTransit", "beds", "bedRank", "scaleComparison",
@@ -802,7 +876,7 @@ function buildNewJobSections(base, collectPublicData) {
 
 function buildImportedJob(sourceJob) {
   const base = {
-    city: sourceJob.city || "",
+    city: canonicalCityName(sourceJob.city || ""),
     organization: sourceJob.organization || "",
     department: sourceJob.department || "",
     role: sourceJob.role || "",
@@ -1090,11 +1164,13 @@ function renderEditorSection(job, section) {
 
 function saveWorkingJob() {
   const job = clone(state.workingJob);
+  job.city = canonicalCityName(job.city);
   job.updatedAt = today();
   if (job.status !== "archived") job.status = "saved";
   const index = state.data.jobs.findIndex((item) => item.id === job.id);
   if (index >= 0) state.data.jobs[index] = job;
   else state.data.jobs.unshift(job);
+  applyCityProfileToMatchingJobs(state.data.jobs, job.city, job.sections.city);
   state.sourceJobs = state.sourceJobs.filter((sourceJob) => sourceJob.id !== job.id);
   saveData();
   state.workingJob = null;
