@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="医疗猎头岗位资料管理平台">
+    <title>医疗岗位资料平台</title>
+    <link rel="stylesheet" href="./styles.css?v=9">
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="app-header">
+        <button class="mobile-menu" id="mobile-menu" type="button" aria-label="打开导航">☰</button>
+        <button class="brand" type="button" data-route="jobs" aria-label="返回岗位资料库">
+          <span class="brand-mark">医</span>
+          <span class="brand-copy">
+            <strong>医疗岗位资料平台</strong>
+            <small>丁香园猎头工作资料库</small>
+          </span>
+        </button>
+        <div class="header-profile">
+          <span class="cloud-sync connecting" id="cloud-sync-status"><i></i><span>正在连接云端</span></span>
+          <span class="header-profile-copy">
+            <strong id="header-consultant-name">汤梦竹</strong>
+            <small>丁香园猎头顾问</small>
+          </span>
+          <span class="profile-avatar">汤</span>
+          <button class="logout-button" type="button" data-action="logout">退出</button>
+        </div>
+      </header>
+
+      <div class="app-body">
+        <aside class="app-sidebar" id="app-sidebar">
+          <nav aria-label="主导航">
+            <p class="nav-label">资料管理</p>
+            <button class="nav-entry active" type="button" data-route="jobs">
+              <span class="nav-icon">▣</span><span>岗位资料</span>
+            </button>
+            <button class="nav-entry" type="button" data-route="cities">
+              <span class="nav-icon">◎</span><span>城市资料</span>
+            </button>
+            <button class="nav-entry" type="button" data-route="organizations">
+              <span class="nav-icon">＋</span><span>医院科室</span>
+            </button>
+            <p class="nav-label nav-label-spaced">系统</p>
+            <button class="nav-entry" type="button" data-route="settings">
+              <span class="nav-icon">⚙</span><span>个人设置</span>
+            </button>
+          </nav>
+
+          <div class="sidebar-note">
+            <span>个人资料库</span>
+            <p>有什么记录什么，没有的信息可以随时补充。</p>
+          </div>
+        </aside>
+
+        <main class="app-main" id="app-main" tabindex="-1"></main>
+      </div>
+    </div>
+
+    <div class="toast-region" id="toast-region" aria-live="polite"></div>
+    <script src="./vendor/supabase.min.js?v=2.49.4"></script>
+    <script src="./config.js?v=1"></script>
+    <script src="./cloud.js?v=1"></script>
+    <script src="./app.js?v=9"></script>
+  </body>
+</html>
