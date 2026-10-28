@@ -8,6 +8,31 @@
     auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
   });
 
+  function wait(delay) {
+    return new Promise((resolve) => setTimeout(resolve, delay));
+  }
+
+  function isTransientNetworkError(error) {
+    const message = String(error?.message || error || "");
+    return error?.name === "TypeError" || /Failed to fetch|NetworkError|Load failed|fetch failed/i.test(message);
+  }
+
+  async function requestWithNetworkRetry(request, attempts = 4) {
+    let lastResult;
+    for (let attempt = 0; attempt < attempts; attempt += 1) {
+      try {
+        lastResult = await request();
+        if (!lastResult?.error || !isTransientNetworkError(lastResult.error)) return lastResult;
+      } catch (error) {
+        if (!isTransientNetworkError(error) || attempt === attempts - 1) throw error;
+        lastResult = { data: null, error };
+      }
+
+      if (attempt < attempts - 1) await wait(500 * (2 ** attempt));
+    }
+    return lastResult;
+  }
+
   function readableError(error, fallback) {
     const message = String(error?.message || "");
     if (message.includes("Invalid login credentials")) return "登录账号或密码不正确";
@@ -21,7 +46,7 @@
 
   window.materialsCloud = Object.freeze({
     async session() {
-      const { data, error } = await client.auth.getSession();
+      const { data, error } = await requestWithNetworkRetry(() => client.auth.getSession());
       if (error) throw new Error(readableError(error, "无法读取登录状态"));
       return data.session;
     },
@@ -38,7 +63,7 @@
     },
 
     async loadWorkspace() {
-      const { data, error } = await client.rpc("get_job_materials_workspace");
+      const { data, error } = await requestWithNetworkRetry(() => client.rpc("get_job_materials_workspace"));
       if (error) throw new Error(readableError(error, "暂时无法读取岗位资料"));
       const workspace = data && typeof data === "object" ? data : {};
       return {

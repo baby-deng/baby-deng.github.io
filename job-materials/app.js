@@ -156,6 +156,14 @@ async function bootstrapApp() {
     document.getElementById("header-consultant-name").textContent = state.data.settings.consultantName;
     renderRoute();
   } catch (error) {
+    state.data = normalizeWorkspace(state.data);
+    if (state.data.jobs.length) {
+      setCloudStatus("离线浏览", "error");
+      document.getElementById("header-consultant-name").textContent = state.data.settings.consultantName;
+      renderRoute();
+      showToast("云端暂时未连接，已显示本机最近保存的资料");
+      return;
+    }
     renderStartupError(error.message);
   }
 }
