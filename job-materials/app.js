@@ -59,6 +59,7 @@ const ORGANIZATION_ENRICHMENTS = {
 
 const state = {
   data: loadLocalData(),
+  sourceJobs: [],
   workingJob: null,
   editorSection: "city",
   search: "",
@@ -144,10 +145,12 @@ async function bootstrapApp() {
 
     if (cloud.data?.jobs?.length) {
       state.data = normalizeWorkspace(cloud.data);
+      state.sourceJobs = Array.isArray(cloud.data.sourceJobs) ? cloud.data.sourceJobs : [];
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state.data));
       setCloudStatus("云端已同步");
     } else {
       state.data = normalizeWorkspace(state.data);
+      state.sourceJobs = Array.isArray(cloud.data?.sourceJobs) ? cloud.data.sourceJobs : [];
       pendingCloudData = clone(state.data);
       await flushCloudSave();
       showToast("已将本机岗位资料迁移到云端");
@@ -598,14 +601,22 @@ function page(content) {
 }
 
 function renderJobs() {
-  const cities = [...new Set(state.data.jobs.map((job) => job.city).filter(Boolean))].sort();
+  const cities = [...new Set([...state.data.jobs, ...state.sourceJobs].map((job) => job.city).filter(Boolean))].sort();
   const query = state.search.trim().toLowerCase();
   const jobs = state.data.jobs.filter((job) => {
     const haystack = `${job.city} ${job.organization} ${job.department} ${job.role}`.toLowerCase();
     return (
       (!query || haystack.includes(query)) &&
       (!state.cityFilter || job.city === state.cityFilter) &&
-      (state.statusFilter ? job.status === state.statusFilter : job.status !== "archived")
+      (state.statusFilter === "source" ? false : state.statusFilter ? job.status === state.statusFilter : job.status !== "archived")
+    );
+  });
+  const sourceJobs = state.sourceJobs.filter((job) => {
+    const haystack = `${job.city} ${job.organization} ${job.department} ${job.role}`.toLowerCase();
+    return (
+      (!query || haystack.includes(query)) &&
+      (!state.cityFilter || job.city === state.cityFilter) &&
+      (!state.statusFilter || state.statusFilter === "source")
     );
   });
 
@@ -629,11 +640,22 @@ function renderJobs() {
         <option value="">在招岗位</option>
         <option value="saved" ${state.statusFilter === "saved" ? "selected" : ""}>已保存</option>
         <option value="draft" ${state.statusFilter === "draft" ? "selected" : ""}>待补充</option>
+        <option value="source" ${state.statusFilter === "source" ? "selected" : ""}>岗位运营待建立</option>
         <option value="archived" ${state.statusFilter === "archived" ? "selected" : ""}>已归档</option>
       </select>
     </div>
 
-    <section class="surface job-list">
+    ${sourceJobs.length ? `
+      <section class="surface source-job-list">
+        <div class="source-job-heading">
+          <div><span>来自猎头岗位运营</span><strong>${sourceJobs.length} 个岗位待建立完整资料</strong></div>
+          <p>基础信息已经存在，无需重复新建。点击后会带入原始需求并进入 AI 补充流程。</p>
+        </div>
+        <div class="job-list-head"><span>岗位</span><span>城市</span><span>运营状态</span><span>现有信息</span><span>操作</span></div>
+        ${sourceJobs.map(renderSourceJobRow).join("")}
+      </section>` : ""}
+
+    ${state.statusFilter === "source" ? "" : `<section class="surface job-list">
       <div class="job-list-head"><span>岗位资料</span><span>城市</span><span>最近更新</span><span>状态</span><span>操作</span></div>
       ${jobs.length ? jobs.map(renderJobRow).join("") : `
         <div class="empty-state">
@@ -641,8 +663,25 @@ function renderJobs() {
           <p>可以调整搜索条件，或者建立一条新的岗位资料。</p>
           <button class="primary-button" type="button" data-action="new-job">新建岗位资料</button>
         </div>`}
-    </section>
+    </section>`}
   `);
+}
+
+function renderSourceJobRow(job) {
+  const informationCount = [job.sourceBrief, job.compensationPolicy, ...(job.requirements || []).map((item) => item.value)].filter(Boolean).length;
+  return `
+    <div class="job-list-row source-job-row">
+      <div class="job-title-button">
+        <strong>${escapeHTML(job.organization)}｜${escapeHTML(job.role)}</strong>
+        <small>${escapeHTML(job.department || "科室待补充")}</small>
+      </div>
+      <span>${escapeHTML(job.city || "待补充")}</span>
+      <span class="status-pill">${escapeHTML(job.operationsStatus || "在库")}</span>
+      <span>${informationCount ? `已有 ${informationCount} 项基础信息` : "仅有岗位名称"}</span>
+      <div class="row-actions">
+        <button class="primary-button compact-button" type="button" data-action="import-source-job" data-id="${escapeHTML(job.id)}">AI建立资料</button>
+      </div>
+    </div>`;
 }
 
 function renderJobRow(job) {
@@ -759,6 +798,57 @@ function buildNewJobSections(base, collectPublicData) {
   });
   sections.platform.departmentName = base.department;
   return sections;
+}
+
+function buildImportedJob(sourceJob) {
+  const base = {
+    city: sourceJob.city || "",
+    organization: sourceJob.organization || "",
+    department: sourceJob.department || "",
+    role: sourceJob.role || "",
+    campus: "",
+  };
+  const job = {
+    ...base,
+    id: sourceJob.id,
+    status: "draft",
+    operationsStatus: sourceJob.operationsStatus || "",
+    updatedAt: today(),
+    sourceBrief: sourceJob.sourceBrief || "",
+    sections: buildNewJobSections(base, true),
+  };
+
+  const dimensionPaths = {
+    "专业方向": "sections.requirements.direction",
+    "学历": "sections.requirements.education",
+    "学位": "sections.requirements.degree",
+    "职称": "sections.requirements.title",
+    "年龄": "sections.requirements.age",
+    "执业及专业资质": "sections.requirements.qualifications",
+    "临床经验": "sections.requirements.clinicalExperience",
+    "管理经验": "sections.requirements.managementExperience",
+    "学科建设经验": "sections.requirements.disciplineExperience",
+    "临床技术": "sections.requirements.clinicalSkills",
+    "科研": "sections.requirements.research",
+    "教学": "sections.requirements.teaching",
+    "其他条件": "sections.requirements.other",
+  };
+  (sourceJob.requirements || []).forEach((requirement) => {
+    const path = dimensionPaths[requirement.dimension];
+    if (path && requirement.value) setAt(job, path, requirement.value);
+  });
+
+  if (sourceJob.sourceBrief) {
+    const intake = parseSmartIntake(sourceJob.sourceBrief);
+    Object.entries(intake.fields).forEach(([path, value]) => {
+      if (!valueAt(job, path)) setAt(job, path, value);
+    });
+    job.sections.position.recruitmentBackground ||= sourceJob.sourceBrief;
+  }
+  if (sourceJob.compensationPolicy) {
+    job.sections.compensation.salaryEmployment ||= sourceJob.compensationPolicy;
+  }
+  return job;
 }
 
 function startCollection(base) {
@@ -1005,6 +1095,7 @@ function saveWorkingJob() {
   const index = state.data.jobs.findIndex((item) => item.id === job.id);
   if (index >= 0) state.data.jobs[index] = job;
   else state.data.jobs.unshift(job);
+  state.sourceJobs = state.sourceJobs.filter((sourceJob) => sourceJob.id !== job.id);
   saveData();
   state.workingJob = null;
   showToast("岗位资料已保存到资料库");
@@ -1618,6 +1709,14 @@ document.addEventListener("click", (event) => {
   if (action === "reload-app") return location.reload();
   if (action === "logout") return void logout();
   if (action === "new-job") return navigate("new");
+  if (action === "import-source-job") {
+    const sourceJob = state.sourceJobs.find((job) => job.id === id);
+    if (!sourceJob) return;
+    state.workingJob = buildImportedJob(sourceJob);
+    state.editorSection = "city";
+    showToast("已带入岗位运营基础信息，并生成待检查的资料草稿");
+    return navigate(`edit/${id}`);
+  }
   if (action === "new-organization-job") return navigate(`new/${encodeURIComponent(id)}`);
   if (action === "go-jobs") return navigate("jobs");
   if (action === "go-cities") return navigate("cities");

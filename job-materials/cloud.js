@@ -44,6 +44,58 @@
     return message || fallback;
   }
 
+  async function loadUnmaterializedJobs(materialJobs) {
+    const [jobsResult, hospitalsResult, requirementsResult] = await Promise.all([
+      requestWithNetworkRetry(() => client
+        .from("jobs")
+        .select("id, hospital_id, department, role, status, raw_text, compensation_policy, updated_at")
+        .eq("status", "招聘中")
+        .order("updated_at", { ascending: false })),
+      requestWithNetworkRetry(() => client
+        .from("hospitals")
+        .select("id, standard_name, city")),
+      requestWithNetworkRetry(() => client
+        .from("job_requirements")
+        .select("job_id, kind, dimension, normalized_value, source_text")
+        .eq("is_active", true)),
+    ]);
+
+    const error = jobsResult.error || hospitalsResult.error || requirementsResult.error;
+    if (error) throw new Error(readableError(error, "暂时无法读取岗位运营数据"));
+
+    const materialJobIds = new Set(materialJobs.map((job) => job.id));
+    const hospitals = new Map((hospitalsResult.data || []).map((hospital) => [hospital.id, hospital]));
+    const requirementsByJob = new Map();
+    (requirementsResult.data || []).forEach((requirement) => {
+      const items = requirementsByJob.get(requirement.job_id) || [];
+      items.push({
+        kind: requirement.kind || "",
+        dimension: requirement.dimension || "",
+        value: requirement.normalized_value || "",
+        sourceText: requirement.source_text || "",
+      });
+      requirementsByJob.set(requirement.job_id, items);
+    });
+
+    return (jobsResult.data || [])
+      .filter((job) => !materialJobIds.has(job.id))
+      .map((job) => {
+        const hospital = hospitals.get(job.hospital_id) || {};
+        return {
+          id: job.id,
+          city: hospital.city || "",
+          organization: hospital.standard_name || "医院待补充",
+          department: job.department || "",
+          role: job.role || "",
+          operationsStatus: job.status || "",
+          updatedAt: String(job.updated_at || "").slice(0, 10),
+          sourceBrief: job.raw_text || "",
+          compensationPolicy: job.compensation_policy || "",
+          requirements: requirementsByJob.get(job.id) || [],
+        };
+      });
+  }
+
   window.materialsCloud = Object.freeze({
     async session() {
       const { data, error } = await requestWithNetworkRetry(() => client.auth.getSession());
@@ -66,9 +118,17 @@
       const { data, error } = await requestWithNetworkRetry(() => client.rpc("get_job_materials_workspace"));
       if (error) throw new Error(readableError(error, "暂时无法读取岗位资料"));
       const workspace = data && typeof data === "object" ? data : {};
+      const jobs = Array.isArray(workspace.jobs) ? workspace.jobs : [];
+      let sourceJobs = [];
+      try {
+        sourceJobs = await loadUnmaterializedJobs(jobs);
+      } catch (sourceError) {
+        console.warn("岗位运营数据暂时无法读取", sourceError);
+      }
       return {
         data: {
-          jobs: Array.isArray(workspace.jobs) ? workspace.jobs : [],
+          jobs,
+          sourceJobs,
           settings: workspace.settings && typeof workspace.settings === "object" ? workspace.settings : {},
         },
         revision: Number(workspace.revision || 0),
