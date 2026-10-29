@@ -57,6 +57,25 @@ const ORGANIZATION_ENRICHMENTS = {
   },
 };
 
+const CITY_ALIASES = {
+  "惠州": "惠州市",
+  "惠州市": "惠州市",
+  "广东惠州": "惠州市",
+  "广东省惠州": "惠州市",
+  "广东省惠州市": "惠州市",
+};
+
+const CITY_PROVINCES = {
+  "惠州市": "广东省",
+  "深圳": "广东省",
+  "宁波市": "浙江省",
+  "嘉兴": "浙江省",
+  "台州市": "浙江省",
+  "温州": "浙江省",
+  "徐州市": "江苏省",
+  "无锡": "江苏省",
+};
+
 const state = {
   data: loadLocalData(),
   sourceJobs: [],
@@ -78,7 +97,10 @@ function loadLocalData() {
     try {
       const parsed = JSON.parse(stored);
       return {
-        jobs: enrichCityData(Array.isArray(parsed.jobs) ? parsed.jobs : []),
+        jobs: enrichCityData((Array.isArray(parsed.jobs) ? parsed.jobs : []).map((job) => ({
+          ...job,
+          city: canonicalCityLabel(job.city),
+        }))),
         settings: { ...DEFAULT_SETTINGS, ...(parsed.settings || {}) },
       };
     } catch (error) {
@@ -120,6 +142,15 @@ function normalizeCityKey(city) {
     .toLowerCase();
 }
 
+function canonicalCityLabel(city) {
+  const label = String(city || "").trim();
+  return CITY_ALIASES[label] || label;
+}
+
+function cityProvince(city) {
+  return CITY_PROVINCES[canonicalCityLabel(city)] || "其他地区";
+}
+
 function cityProfileScore(job) {
   return Object.values(job?.sections?.city || {}).filter((value) => String(value || "").trim()).length;
 }
@@ -137,7 +168,8 @@ function cityProfileJobs(city, jobs = state.data.jobs) {
 }
 
 function canonicalCityName(city, jobs = state.data.jobs) {
-  return cityProfileJobs(city, jobs)[0]?.city || String(city || "").trim();
+  const canonical = canonicalCityLabel(city);
+  return cityProfileJobs(canonical, jobs)[0]?.city || canonical;
 }
 
 function synchronizeSharedCityProfiles(jobs) {
@@ -242,8 +274,12 @@ async function bootstrapApp() {
 }
 
 function normalizeWorkspace(data) {
+  const jobs = Array.isArray(data?.jobs) ? data.jobs.map((job) => ({
+    ...job,
+    city: canonicalCityLabel(job.city),
+  })) : [];
   return {
-    jobs: synchronizeSharedCityProfiles(enrichCityData(Array.isArray(data?.jobs) ? data.jobs : [])),
+    jobs: synchronizeSharedCityProfiles(enrichCityData(jobs)),
     settings: { ...DEFAULT_SETTINGS, ...(data?.settings || {}) },
   };
 }
@@ -671,13 +707,14 @@ function page(content) {
 }
 
 function renderJobs() {
-  const cities = [...new Set([...state.data.jobs, ...state.sourceJobs].map((job) => job.city).filter(Boolean))].sort();
+  const cities = [...new Set([...state.data.jobs, ...state.sourceJobs].map((job) => canonicalCityLabel(job.city)).filter(Boolean))]
+    .sort((left, right) => `${cityProvince(left)}${left}`.localeCompare(`${cityProvince(right)}${right}`, "zh-CN"));
   const query = state.search.trim().toLowerCase();
   const jobs = state.data.jobs.filter((job) => {
     const haystack = `${job.city} ${job.organization} ${job.department} ${job.role}`.toLowerCase();
     return (
       (!query || haystack.includes(query)) &&
-      (!state.cityFilter || job.city === state.cityFilter) &&
+      (!state.cityFilter || canonicalCityLabel(job.city) === canonicalCityLabel(state.cityFilter)) &&
       (state.statusFilter === "source" ? false : state.statusFilter ? job.status === state.statusFilter : job.status !== "archived")
     );
   });
@@ -685,7 +722,7 @@ function renderJobs() {
     const haystack = `${job.city} ${job.organization} ${job.department} ${job.role}`.toLowerCase();
     return (
       (!query || haystack.includes(query)) &&
-      (!state.cityFilter || job.city === state.cityFilter) &&
+      (!state.cityFilter || canonicalCityLabel(job.city) === canonicalCityLabel(state.cityFilter)) &&
       (!state.statusFilter || state.statusFilter === "source")
     );
   });
@@ -704,7 +741,7 @@ function renderJobs() {
       <input class="search-input" id="job-search" value="${escapeHTML(state.search)}" placeholder="搜索医院、科室或岗位">
       <select class="field-select" id="city-filter" aria-label="按城市筛选">
         <option value="">全部城市</option>
-        ${cities.map((city) => `<option value="${escapeHTML(city)}" ${state.cityFilter === city ? "selected" : ""}>${escapeHTML(city)}</option>`).join("")}
+        ${groupByProvince(cities).map(([province, provinceCities]) => `<optgroup label="${escapeHTML(province)}">${provinceCities.map((city) => `<option value="${escapeHTML(city)}" ${canonicalCityLabel(state.cityFilter) === city ? "selected" : ""}>${escapeHTML(city)}</option>`).join("")}</optgroup>`).join("")}
       </select>
       <select class="field-select" id="status-filter" aria-label="按状态筛选">
         <option value="">在招岗位</option>
@@ -726,8 +763,9 @@ function renderJobs() {
       </section>` : ""}
 
     ${state.statusFilter === "source" ? "" : `<section class="surface job-list">
+      <p class="sortHint">显示规则：先按医院分组，同一医院的岗位连续展示；医院内按最近更新排序。</p>
       <div class="job-list-head"><span>岗位资料</span><span>城市</span><span>最近更新</span><span>状态</span><span>操作</span></div>
-      ${jobs.length ? jobs.map(renderJobRow).join("") : `
+      ${jobs.length ? renderGroupedJobRows(jobs) : `
         <div class="empty-state">
           <strong>没有找到岗位资料</strong>
           <p>可以调整搜索条件，或者建立一条新的岗位资料。</p>
@@ -735,6 +773,41 @@ function renderJobs() {
         </div>`}
     </section>`}
   `);
+}
+
+function groupByProvince(cities) {
+  const grouped = new Map();
+  cities.forEach((city) => {
+    const province = cityProvince(city);
+    const items = grouped.get(province) || [];
+    items.push(city);
+    grouped.set(province, items);
+  });
+  return [...grouped.entries()].sort((left, right) => left[0].localeCompare(right[0], "zh-CN"));
+}
+
+function sortJobsForLibrary(jobs) {
+  return [...jobs].sort((left, right) => {
+    const organizationOrder = String(left.organization || "").localeCompare(String(right.organization || ""), "zh-CN");
+    if (organizationOrder) return organizationOrder;
+    const updatedOrder = String(right.updatedAt || "").localeCompare(String(left.updatedAt || ""));
+    if (updatedOrder) return updatedOrder;
+    return `${left.department || ""}${left.role || ""}`.localeCompare(`${right.department || ""}${right.role || ""}`, "zh-CN");
+  });
+}
+
+function renderGroupedJobRows(jobs) {
+  const groups = new Map();
+  sortJobsForLibrary(jobs).forEach((job) => {
+    const items = groups.get(job.organization) || [];
+    items.push(job);
+    groups.set(job.organization, items);
+  });
+  return [...groups.entries()].map(([organization, organizationJobs]) => `
+    <section class="job-group">
+      <div class="job-group-heading"><strong>${escapeHTML(organization)}</strong><span>${escapeHTML(canonicalCityLabel(organizationJobs[0].city))} · ${organizationJobs.length} 个岗位</span></div>
+      ${organizationJobs.map(renderJobRow).join("")}
+    </section>`).join("");
 }
 
 function renderSourceJobRow(job) {
@@ -761,7 +834,7 @@ function renderJobRow(job) {
         <strong>${escapeHTML(job.organization)}｜${escapeHTML(job.role)}</strong>
         <small>${escapeHTML(jobSubtitle(job))}</small>
       </button>
-      <span>${escapeHTML(job.city)}</span>
+      <span>${escapeHTML(canonicalCityLabel(job.city))}</span>
       <span>${escapeHTML(job.updatedAt)}</span>
       <span class="status-pill ${statusClass(job.status)}">${statusLabel(job.status)}</span>
       <div class="row-actions">
@@ -1365,10 +1438,11 @@ function insightPanel(label, text) {
 }
 
 function renderCityDetail(city) {
-  const jobs = state.data.jobs.filter((job) => job.city === city);
+  const canonicalCity = canonicalCityLabel(city);
+  const jobs = cityProfileJobs(canonicalCity);
   if (!jobs.length) return navigate("cities");
   const field = (name) => firstAvailable(jobs, `sections.city.${name}`);
-  const rankMetric = city === "宁波市" ? "省内第2｜全国第11" : field("gdpRank");
+  const rankMetric = canonicalCity === "宁波市" ? "省内第2｜全国第11" : field("gdpRank");
   const organizations = [...new Set(jobs.map((job) => job.organization).filter(Boolean))];
   const cityFacts = [
     ["城市定位", field("cityPosition")],
@@ -1393,14 +1467,14 @@ function renderCityDetail(city) {
     backAction: "go-cities",
     backLabel: "返回城市资料",
     kicker: "城市资料",
-    title: city,
+    title: canonicalCity,
     subtitle: field("summary"),
     metrics: [["2025年GDP", field("gdp")], ["经济总量排名", rankMetric], ["居民人均可支配收入", field("disposableIncome")], ["住宅挂牌均价", field("housingPrice")]],
     sections: [
       { title: "城市概况", content: `<div class="fact-grid">${cityFacts.map(([label, value]) => factItem(label, value)).join("")}</div>` },
       { title: "经济位置与收入", content: `<div class="fact-grid">${economyFacts.map(([label, value]) => factItem(label, value)).join("")}</div>` },
       { title: "医疗资源与区域竞争", content: `<div class="fact-grid">${factItem("城市医疗资源", field("medical"))}</div>${insightPanel("竞争格局", field("medicalCompetition"))}` },
-      { title: "住房成本对比", content: cityHousingComparison(city, field("housingComparison")) },
+      { title: "住房成本对比", content: cityHousingComparison(canonicalCity, field("housingComparison")) },
       { title: "猎头解读", content: insightPanel("向候选人怎么讲", field("attractiveness")) },
       { title: "相关医院", content: hospitalLinks },
     ],
@@ -1533,16 +1607,32 @@ function renderDepartmentDetail(jobId) {
 }
 
 function renderCities() {
-  const grouped = new Map();
+  const cityGroups = new Map();
   state.data.jobs.forEach((job) => {
-    if (!grouped.has(job.city)) grouped.set(job.city, []);
-    grouped.get(job.city).push(job);
+    const city = canonicalCityLabel(job.city);
+    if (!city) return;
+    const jobs = cityGroups.get(city) || [];
+    jobs.push(job);
+    cityGroups.set(city, jobs);
   });
+  const provinceGroups = new Map();
+  [...cityGroups.entries()]
+    .sort(([left], [right]) => left.localeCompare(right, "zh-CN"))
+    .forEach(([city, jobs]) => {
+      const province = cityProvince(city);
+      const cities = provinceGroups.get(province) || [];
+      cities.push([city, jobs]);
+      provinceGroups.set(province, cities);
+    });
   page(`
     <div class="page-heading"><div><p class="eyebrow">Cities</p><h1>城市资料</h1><p>城市信息会被同一城市的不同岗位重复调用。</p></div></div>
-    <div class="summary-grid">
-      ${[...grouped.entries()].map(([city, jobs]) => `<button class="surface summary-card" type="button" data-action="view-city" data-id="${escapeHTML(city)}"><span>城市</span><strong>${escapeHTML(city)}</strong><small>关联 ${jobs.length} 条岗位资料</small><b>查看城市资料 →</b></button>`).join("") || `<section class="surface empty-state"><strong>暂无城市资料</strong><p>建立岗位后，城市资料会自动出现在这里。</p></section>`}
-    </div>
+    ${[...provinceGroups.entries()].map(([province, cities]) => `
+      <section class="province-section">
+        <div class="province-heading"><div><span>PROVINCE</span><h2>${escapeHTML(province)}</h2></div><small>${cities.length} 个城市 · ${cities.reduce((count, [, jobs]) => count + jobs.length, 0)} 条岗位资料</small></div>
+        <div class="summary-grid">
+          ${cities.map(([city, jobs]) => `<button class="surface summary-card" type="button" data-action="view-city" data-id="${escapeHTML(city)}"><span>${escapeHTML(province)}</span><strong>${escapeHTML(city)}</strong><small>关联 ${jobs.length} 条岗位资料</small><b>查看城市资料 →</b></button>`).join("")}
+        </div>
+      </section>`).join("") || `<section class="surface empty-state"><strong>暂无城市资料</strong><p>建立岗位后，城市资料会自动出现在这里。</p></section>`}
   `);
 }
 

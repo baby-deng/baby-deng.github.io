@@ -550,12 +550,24 @@ button { cursor: pointer; }
 .contact-panel { padding: 14px 15px; border: 1px solid #c9def7; border-radius: 9px; color: var(--blue-dark); background: #f1f7ff; font-size: 11px; font-weight: 600; }
 
 .summary-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.province-section { margin-top: 18px; }
+.province-section:first-of-type { margin-top: 2px; }
+.province-heading { display: flex; align-items: end; justify-content: space-between; gap: 16px; margin-bottom: 10px; padding: 0 2px 8px; border-bottom: 1px solid #dbe5ee; }
+.province-heading span { color: var(--teal); font-size: 9px; font-weight: 700; letter-spacing: 0.14em; }
+.province-heading h2 { margin: 3px 0 0; color: #2f4058; font-family: "Songti SC", serif; font-size: 21px; }
+.province-heading small { color: var(--muted); font-size: 10px; }
 .summary-card { padding: 16px; text-align: left; cursor: pointer; transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease; }
 .summary-card:hover { transform: translateY(-2px); border-color: #b8d4ee; box-shadow: 0 12px 28px rgba(34, 65, 103, 0.09); }
 .summary-card span { color: var(--muted); font-size: 10px; }
 .summary-card strong { display: block; margin: 5px 0 2px; font-family: "Songti SC", serif; font-size: 23px; }
 .summary-card small { color: var(--subtle); font-size: 9.5px; }
 .summary-card b { display: block; margin-top: 16px; color: var(--blue); font-size: 9.5px; }
+.job-group { border-top: 1px solid var(--line-soft); }
+.job-group:first-of-type { border-top: 0; }
+.job-group-heading { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 14px 17px 9px; color: #314159; background: #f7fafc; }
+.job-group-heading strong { font-size: 11.5px; }
+.job-group-heading span { color: var(--muted); font-size: 9.5px; white-space: nowrap; }
+.sortHint { margin: 0; padding: 11px 17px; border-bottom: 1px solid var(--line-soft); color: var(--muted); background: #fbfcfe; font-size: 9.5px; }
 .reference-list { margin-top: 14px; overflow: hidden; }
 .reference-row { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 17px; border: 0; border-top: 1px solid var(--line-soft); color: inherit; background: transparent; text-align: left; cursor: pointer; transition: background 150ms ease; }
 .reference-row:hover { background: #f7fafc; }
@@ -759,6 +771,7 @@ button { cursor: pointer; }
   .related-job-row { align-items: flex-start; flex-direction: column; gap: 9px; }
   .archive-notice, .reuse-notice { align-items: flex-start; flex-direction: column; gap: 4px; }
   .reference-row-end .status-pill { display: none; }
+  .province-heading { align-items: flex-start; flex-direction: column; gap: 4px; }
   .housing-row { grid-template-columns: 1fr; gap: 7px; }
   .housing-label { justify-content: flex-start; }
   .housing-row small { margin-top: -2px; }
