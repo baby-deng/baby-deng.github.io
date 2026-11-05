@@ -21,6 +21,31 @@ const SECTION_LABELS = {
   application: "应聘方式",
 };
 
+const SHARED_HOSPITAL_FIELDS = [
+  "hospitalNature", "grade", "hospitalType", "affiliation", "history", "campuses",
+  "locationPosition", "campusAccess", "publicTransit", "beds", "bedRank",
+  "scaleComparison", "staff", "visits", "performance", "research",
+  "platformAttractiveness", "hospitalSummary",
+];
+
+const DEPARTMENT_PROFILE_FIELDS = [
+  "departmentLocation", "team", "titleStructure", "departmentBeds", "departmentVolume",
+  "specialties", "technology", "discipline", "teaching", "departmentSummary",
+];
+
+const DEPARTMENT_PROFILE_LABELS = {
+  departmentLocation: "科室位置",
+  team: "团队规模",
+  titleStructure: "职称结构",
+  departmentBeds: "科室床位",
+  departmentVolume: "科室业务量",
+  specialties: "亚专科和业务方向",
+  technology: "特色技术",
+  discipline: "学科或专科情况",
+  teaching: "教学和科研基础",
+  departmentSummary: "科室综合介绍",
+};
+
 const DEFAULT_SETTINGS = {
   consultantName: "汤梦竹",
   consultantTitle: "丁香园猎头顾问",
@@ -36,13 +61,13 @@ const CITY_ENRICHMENTS = {
     population: "983.3万人（2025年末）",
     gdp: "18716亿元（2025年）",
     gdpRank: "浙江省第2位、全国城市第11位（2025年GDP）",
-    perCapitaGdp: "约19.03万元（按2025年GDP与年末常住人口测算）",
+    perCapitaGdp: "190879元（2025年，宁波市统计公报公布值）",
     disposableIncome: "77779元（2025年居民人均可支配收入）",
-    housingPrice: "16620元/㎡（2026年9月住宅挂牌均价）",
-    housingComparison: "同口径下，杭州为34529元/㎡、上海为60398元/㎡。宁波约为杭州的48%、上海的28%，住房成本分别低约52%和72%。",
-    medical: "2025年全市拥有三甲医院11家、三乙医院14家，三级医院数量和区域医疗承载能力位居浙江省前列。",
+    housingPrice: "历史市场参考：16620元/㎡（原标2026年9月挂牌均价，原平台及样本口径待复核）",
+    housingComparison: "按目标院区周边同类住房核对租金、购房总价和通勤成本，并结合安家费、人才房资格及兑现周期评估家庭安置。",
+    medical: "2025年全市拥有三甲医院11家、三乙医院15家（宁波市统计公报），形成多层次区域医疗服务体系。",
     medicalCompetition: "宁波本地综合性三甲平台较多，成熟学科带头人竞争较强；同时杭州、上海的高能级医院对高层次人才和疑难患者存在吸引力。宁波的优势是患者基数大、区域辐射稳定，且生活和住房成本明显低于杭州、上海。",
-    attractiveness: "宁波不是单纯的低成本城市，而是经济总量全国前列、医疗平台密集、生活成本相对可控的强二线城市。对医疗人才而言，适合强调“平台能级与杭州接近、生活压力显著低于杭州上海”的综合性价比。",
+    attractiveness: "顾问分析：宁波人口和产业基础较大，大学附属与市级医院为临床专科发展提供资源。与人选沟通时，可结合具体科室的技术和科研支持、岗位待遇、住房及子女入学安排介绍。",
   },
 };
 
@@ -66,13 +91,14 @@ const CITY_ALIASES = {
 };
 
 const CITY_PROVINCES = {
-  "惠州市": "广东省",
+  "广州": "广东省",
+  "惠州": "广东省",
   "深圳": "广东省",
-  "宁波市": "浙江省",
+  "宁波": "浙江省",
   "嘉兴": "浙江省",
-  "台州市": "浙江省",
+  "台州": "浙江省",
   "温州": "浙江省",
-  "徐州市": "江苏省",
+  "徐州": "江苏省",
   "无锡": "江苏省",
 };
 
@@ -148,7 +174,7 @@ function canonicalCityLabel(city) {
 }
 
 function cityProvince(city) {
-  return CITY_PROVINCES[canonicalCityLabel(city)] || "其他地区";
+  return CITY_PROVINCES[normalizeCityKey(canonicalCityLabel(city))] || "其他地区";
 }
 
 function cityProfileScore(job) {
@@ -511,65 +537,7 @@ function emptySections() {
 
 function createCollectedSections(base) {
   const sections = emptySections();
-  if (base.city.includes("宁波")) {
-    Object.assign(sections.city, {
-      ...CITY_ENRICHMENTS["宁波市"],
-      economy: "港口经济与先进制造业基础较强，民营经济活跃。",
-      education: "拥有宁波大学、宁波诺丁汉大学等高等教育资源。",
-      transport: "高铁、机场及高速路网完善，可便捷连接杭州、上海等城市。",
-      summary:
-        "宁波是长三角重要港口城市和先进制造业基地，2025年经济总量位居浙江省第2、全国城市第11，兼具较强平台能级和相对可控的生活成本。",
-    });
-  }
-
-  if (base.organization.includes("李惠利")) {
-    Object.assign(sections.platform, {
-      ...ORGANIZATION_ENRICHMENTS["宁波市医疗中心李惠利医院"],
-      hospitalNature: "公立综合医院",
-      grade: "三级甲等",
-      hospitalType: "综合医院",
-      affiliation: "宁波大学附属医院",
-      history: "历史可追溯至1843年，1993年创建宁波市医疗中心。",
-      campuses: "兴宁院区、东部院区",
-      address: base.campus?.includes("兴宁") ? "宁波市鄞州区兴宁路57号" : "宁波市鄞州区江南路1111号",
-      transit: base.campus?.includes("兴宁") ? "地铁4号线白鹤站可达" : "地铁5号线、6号线院士路站可达",
-      beds: "2600张",
-      staff: "3833人",
-      visits: "年门急诊近300万人次，年出院超15万人次，年手术近7万台次",
-      performance: "全国公立医院绩效考核连续六年全国百强、A+等级",
-      research: "拥有9.85万平方米独栋综合科研大楼",
-      hospitalSummary:
-        "医院是宁波市首批三级甲等综合性公立医院和宁波大学附属医院，目前设兴宁、东部两个院区，核定床位2600张，具有较强的临床、科研和教学平台基础。",
-      departmentName: base.department || "",
-    });
-  }
-
-  if (base.department.includes("眼科")) {
-    Object.assign(sections.platform, {
-      departmentLocation: "东部院区医疗楼9楼A区",
-      team: "13名医生",
-      titleStructure: "主任医师3名、副主任医师4名、主治医师6名",
-      discipline: "国家级住院医师规范化培训基地",
-      teaching: "承担住院医师规范化培训任务",
-      departmentSummary:
-        "眼科位于东部院区医疗楼9楼A区，官网公开13名医生，包括主任医师3名、副主任医师4名、主治医师6名，并具备国家级住院医师规范化培训基础。",
-    });
-  }
-
-  if (base.department.includes("口腔")) {
-    Object.assign(sections.platform, {
-      departmentLocation: "兴宁院区3号楼13楼；东部院区综合医疗楼11楼C区",
-      team: "医务人员22人",
-      titleStructure: "主任医师2人、副主任医师5人、硕士研究生12名",
-      departmentBeds: "25余张",
-      departmentVolume: "年门诊近7万人次，年收住病人2000余人，病房手术1500余人次",
-      specialties: "口腔颌面外科、正畸、口腔内科、口腔修复与种植等",
-      discipline: "浙江省首批住院医师规范化培训基地",
-      departmentSummary:
-        "口腔科覆盖口腔颌面外科、正畸、口腔内科、口腔修复与种植等方向，现有医务人员22人，年门诊近7万人次，并具备省级住培基础。",
-    });
-  }
-
+  sections.platform.departmentName = base.department || "";
   sections.position.direction = base.department ? `${base.department}相关专业方向` : "";
   sections.requirements.direction = sections.position.direction;
   return sections;
@@ -619,8 +587,153 @@ function hasValues(object) {
   });
 }
 
+function isNonBlank(value) {
+  return String(value ?? "").trim().length > 0;
+}
+
+function copyNonBlankFields(target, source, fields, overwrite = true) {
+  fields.forEach((field) => {
+    const value = source?.[field];
+    if (!isNonBlank(value) || (!overwrite && isNonBlank(target?.[field]))) return;
+    target[field] = clone(value);
+  });
+  return target;
+}
+
+function collectNonBlankProfile(jobs, fields) {
+  const profile = {};
+  newestFirst(jobs).forEach((job) => copyNonBlankFields(
+    profile,
+    job.sections?.platform,
+    fields,
+    false,
+  ));
+  return profile;
+}
+
+function changedSharedFields(sourceJob, previousJob, fields) {
+  if (!previousJob) {
+    return new Set(fields.filter((field) => isNonBlank(sourceJob.sections?.platform?.[field])));
+  }
+  return new Set(fields.filter((field) => (
+    String(sourceJob.sections?.platform?.[field] ?? "").trim()
+      !== String(previousJob.sections?.platform?.[field] ?? "").trim()
+  )));
+}
+
+function buildSharedProfile(peerJobs, sourceJob, previousJob, fields, previousBelongsToGroup) {
+  const baselineJobs = [...peerJobs];
+  if (previousBelongsToGroup && previousJob) baselineJobs.push(previousJob);
+  const profile = collectNonBlankProfile(baselineJobs, fields);
+  const changes = changedSharedFields(sourceJob, previousJob, fields);
+  changes.forEach((field) => {
+    const value = sourceJob.sections?.platform?.[field];
+    if (isNonBlank(value)) profile[field] = clone(value);
+    else delete profile[field];
+  });
+  return { profile, changes };
+}
+
+function explicitlyClearedFields(previousJob, sourceJob, fields) {
+  if (!previousJob) return new Set();
+  return new Set(fields.filter((field) => (
+    isNonBlank(previousJob.sections?.platform?.[field])
+      && !isNonBlank(sourceJob.sections?.platform?.[field])
+  )));
+}
+
+function applySharedProfile(job, profile, fields, clearedFields) {
+  if (!job.sections) job.sections = emptySections();
+  if (!job.sections.platform) job.sections.platform = emptySections().platform;
+  fields.forEach((field) => {
+    if (clearedFields.has(field)) job.sections.platform[field] = "";
+    else if (isNonBlank(profile[field])) job.sections.platform[field] = clone(profile[field]);
+  });
+}
+
+function synchronizeDepartmentName(job) {
+  const departmentName = String(job.sections?.platform?.departmentName || "").trim();
+  if (departmentName) job.department = departmentName;
+  else if (job.department) job.sections.platform.departmentName = job.department;
+}
+
+function propagateSharedPlatformProfiles(jobs, sourceJob, previousJob = null) {
+  if (!sourceJob?.organization) return;
+  if (!sourceJob.sections) sourceJob.sections = emptySections();
+  if (!sourceJob.sections.platform) sourceJob.sections.platform = emptySections().platform;
+
+  const organization = String(sourceJob.organization).trim();
+  const sameOrganizationPeers = jobs.filter((job) => (
+    job.id !== sourceJob.id && String(job.organization || "").trim() === organization
+  ));
+  const previousOrganizationMatches = previousJob
+    && String(previousJob.organization || "").trim() === organization;
+  const hospitalClears = previousOrganizationMatches
+    ? explicitlyClearedFields(previousJob, sourceJob, SHARED_HOSPITAL_FIELDS)
+    : new Set();
+  const { profile: hospitalProfile } = buildSharedProfile(
+    sameOrganizationPeers,
+    sourceJob,
+    previousJob,
+    SHARED_HOSPITAL_FIELDS,
+    previousOrganizationMatches,
+  );
+  if (previousJob && !previousOrganizationMatches) {
+    SHARED_HOSPITAL_FIELDS.forEach((field) => {
+      sourceJob.sections.platform[field] = "";
+    });
+  }
+  [sourceJob, ...sameOrganizationPeers].forEach((job) => applySharedProfile(
+    job,
+    hospitalProfile,
+    SHARED_HOSPITAL_FIELDS,
+    hospitalClears,
+  ));
+
+  const department = String(sourceJob.department || "").trim();
+  if (!department) return;
+  const targetDepartmentPeers = sameOrganizationPeers.filter(
+    (job) => String(job.department || "").trim() === department,
+  );
+  const previousDepartment = String(previousJob?.department || "").trim();
+  const previousDepartmentMatches = previousOrganizationMatches && previousDepartment === department;
+  const profileFollowsDepartmentRename = previousOrganizationMatches
+    && previousDepartment
+    && previousDepartment !== department
+    && targetDepartmentPeers.length === 0;
+  const previousProfileMatchesTarget = previousDepartmentMatches || profileFollowsDepartmentRename;
+  const departmentClears = previousProfileMatchesTarget
+    ? explicitlyClearedFields(previousJob, sourceJob, DEPARTMENT_PROFILE_FIELDS)
+    : new Set();
+  const { profile: departmentProfile } = buildSharedProfile(
+    targetDepartmentPeers,
+    sourceJob,
+    previousJob,
+    DEPARTMENT_PROFILE_FIELDS,
+    previousProfileMatchesTarget,
+  );
+  if (previousJob && !previousProfileMatchesTarget) {
+    DEPARTMENT_PROFILE_FIELDS.forEach((field) => {
+      sourceJob.sections.platform[field] = "";
+    });
+  }
+  [sourceJob, ...targetDepartmentPeers].forEach((job) => {
+    applySharedProfile(job, departmentProfile, DEPARTMENT_PROFILE_FIELDS, departmentClears);
+    job.sections.platform.departmentName = job.department || department;
+  });
+}
+
 function sectionState(job, key) {
   if (key === "application") return "固定内容";
+  if (key === "platform") {
+    const platform = job.sections?.platform || {};
+    const hasHospitalProfile = SHARED_HOSPITAL_FIELDS.some((field) => isNonBlank(platform[field]));
+    const hasDepartmentProfile = DEPARTMENT_PROFILE_FIELDS.some((field) => isNonBlank(platform[field]));
+    if (hasHospitalProfile && hasDepartmentProfile) return "医院、科室已有";
+    if (hasHospitalProfile) return "医院已有，科室待补";
+    if (hasDepartmentProfile) return "科室已有";
+    return "空";
+  }
   return hasValues(job.sections?.[key]) ? "有内容" : "空";
 }
 
@@ -636,6 +749,17 @@ function statusClass(status) {
 
 function jobSubtitle(job) {
   return [job.department, job.campus].filter(Boolean).join(" · ") || "尚未补充科室和院区";
+}
+
+function departmentIntroductionGap(job) {
+  const platform = job.sections?.platform || {};
+  const filledFields = DEPARTMENT_PROFILE_FIELDS.filter((field) => isNonBlank(platform[field]));
+  if (!filledFields.length) return "科室资料待补";
+  if (/不对应单一.*科室|不适用科室介绍/.test(String(platform.departmentSummary || ""))) return "非科室项目";
+  if (/筹建|尚未投入使用/.test(String(platform.departmentSummary || ""))) return "筹建期资料";
+  const supportingFacts = filledFields.filter((field) => field !== "departmentSummary").length;
+  if (isNonBlank(platform.departmentSummary) && supportingFacts >= 2) return "";
+  return "科室介绍待完善";
 }
 
 function showToast(message) {
@@ -756,7 +880,7 @@ function renderJobs() {
       <section class="surface source-job-list">
         <div class="source-job-heading">
           <div><span>来自猎头岗位运营</span><strong>${sourceJobs.length} 个岗位待建立完整资料</strong></div>
-          <p>基础信息已经存在，无需重复新建。点击后会带入原始需求并进入 AI 补充流程。</p>
+          <p>基础信息已经存在，无需重复新建。点击后会带入原始需求并建立可编辑的资料框架。</p>
         </div>
         <div class="job-list-head"><span>岗位</span><span>城市</span><span>运营状态</span><span>现有信息</span><span>操作</span></div>
         ${sourceJobs.map(renderSourceJobRow).join("")}
@@ -822,17 +946,18 @@ function renderSourceJobRow(job) {
       <span class="status-pill">${escapeHTML(job.operationsStatus || "在库")}</span>
       <span>${informationCount ? `已有 ${informationCount} 项基础信息` : "仅有岗位名称"}</span>
       <div class="row-actions">
-        <button class="primary-button compact-button" type="button" data-action="import-source-job" data-id="${escapeHTML(job.id)}">AI建立资料</button>
+        <button class="primary-button compact-button" type="button" data-action="import-source-job" data-id="${escapeHTML(job.id)}">建立资料</button>
       </div>
     </div>`;
 }
 
 function renderJobRow(job) {
+  const introductionGap = departmentIntroductionGap(job);
   return `
     <div class="job-list-row">
       <button class="job-title-button" type="button" data-action="view-job" data-id="${escapeHTML(job.id)}">
         <strong>${escapeHTML(job.organization)}｜${escapeHTML(job.role)}</strong>
-        <small>${escapeHTML(jobSubtitle(job))}</small>
+        <small>${escapeHTML(jobSubtitle(job))}${introductionGap ? ` <span class="department-gap">· ${escapeHTML(introductionGap)}</span>` : ""}</small>
       </button>
       <span>${escapeHTML(canonicalCityLabel(job.city))}</span>
       <span>${escapeHTML(job.updatedAt)}</span>
@@ -872,11 +997,11 @@ function renderNewJob(prefillOrganization = "") {
             ${inputField("campus", "工作院区", "例如：东部院区", "", false, "full")}
           </div>
           <div class="ai-panel">
-            <strong>让AI先收集一轮公开资料</strong>
-            <p>${sourceJob ? "系统保留已有城市和医院资料，只重新收集新科室与新岗位的信息。" : "系统会根据城市、单位、科室和岗位整理七个维度。找不到的信息保持为空，不自动猜测。"}</p>
+            <strong>先建立岗位资料框架</strong>
+            <p>${sourceJob ? "网页会复用已有城市、医院以及同科室资料，并建立新岗位的填写框架。医院和科室公开资料由 Codex 联网核实后补充。" : "网页会根据城市、单位、科室和岗位建立七个维度的填写框架；医院和科室公开资料由 Codex 联网核实后补充。"}</p>
             <div class="button-row">
-              <button class="primary-button" type="submit">开始AI收集</button>
-              <button class="secondary-button" type="button" data-action="blank-draft">暂不收集，直接填写</button>
+              <button class="primary-button" type="submit">建立资料框架</button>
+              <button class="secondary-button" type="button" data-action="blank-draft">直接填写</button>
             </div>
             <div class="collection-progress" id="collection-progress">
               <div class="progress-track"><div class="progress-bar" id="progress-bar"></div></div>
@@ -889,8 +1014,8 @@ function renderNewJob(prefillOrganization = "") {
       <section class="surface">
         <div class="surface-header"><strong>资料形成过程</strong><span>确认后才进入资料库</span></div>
         <div class="step-list">
-          ${stepItem("01", "检索公开信息", "城市、医院、科室及公开招聘内容", "AI")}
-          ${stepItem("02", "整理七个维度", "自动归类数据字段和介绍文字", "AI")}
+          ${stepItem("01", "建立资料框架", "按城市、医院、科室和岗位整理字段", "网页")}
+          ${stepItem("02", "联网核实补充", "由 Codex 查证医院及科室公开资料", "Codex")}
           ${stepItem("03", "人工检查补充", "修改错误内容，补充客户沟通信息", "你")}
           ${stepItem("04", "保存岗位资料", "保存后形成一条可反复使用的岗位资料", "你")}
         </div>
@@ -930,19 +1055,20 @@ function buildNewJobSections(base, collectPublicData) {
   const citySourceJob = cityProfileJobs(base.city)[0];
   if (citySourceJob?.sections?.city) sections.city = clone(citySourceJob.sections.city);
 
-  const sourceJob = newestFirst(state.data.jobs.filter((job) => job.organization === base.organization))[0];
+  const sameOrganizationJobs = newestFirst(
+    state.data.jobs.filter((job) => job.organization === base.organization),
+  );
+  const sourceJob = sameOrganizationJobs[0];
   if (!sourceJob) return sections;
 
-  sections.city = clone(sourceJob.sections.city || citySourceJob?.sections?.city || sections.city);
-  const sharedHospitalFields = [
-    "hospitalNature", "grade", "hospitalType", "affiliation", "history", "campuses",
-    "locationPosition", "campusAccess", "publicTransit", "beds", "bedRank", "scaleComparison",
-    "staff", "visits", "performance", "research", "platformAttractiveness", "hospitalSummary",
-  ];
-  sharedHospitalFields.forEach((field) => {
-    const value = sourceJob.sections.platform?.[field];
-    if (value) sections.platform[field] = clone(value);
-  });
+  sections.city = clone(sourceJob.sections?.city || citySourceJob?.sections?.city || sections.city);
+  const hospitalProfile = collectNonBlankProfile(sameOrganizationJobs, SHARED_HOSPITAL_FIELDS);
+  copyNonBlankFields(sections.platform, hospitalProfile, SHARED_HOSPITAL_FIELDS);
+  const sameDepartmentJobs = sameOrganizationJobs.filter(
+    (job) => String(job.department || "").trim() === String(base.department || "").trim(),
+  );
+  const departmentProfile = collectNonBlankProfile(sameDepartmentJobs, DEPARTMENT_PROFILE_FIELDS);
+  copyNonBlankFields(sections.platform, departmentProfile, DEPARTMENT_PROFILE_FIELDS);
   sections.platform.departmentName = base.department;
   return sections;
 }
@@ -1005,10 +1131,10 @@ function startCollection(base) {
   const percent = document.getElementById("progress-percent");
   progress.classList.add("active");
   const stages = [
-    [24, "正在识别城市资料…"],
-    [51, "正在整理医院和科室信息…"],
-    [78, "正在匹配七个资料维度…"],
-    [100, "AI草稿已生成"],
+    [24, "正在复用城市资料…"],
+    [51, "正在整理医院和科室字段…"],
+    [78, "正在建立七个资料维度…"],
+    [100, "资料框架已生成"],
   ];
   let index = 0;
   const run = () => {
@@ -1080,7 +1206,7 @@ function renderEditor() {
           <div class="editor-actions">
             <button class="quiet-button" type="button" data-action="previous-section" ${SECTION_ORDER.indexOf(section) === 0 ? "disabled" : ""}>上一项</button>
             <div class="button-row">
-              ${section !== "application" ? `<button class="secondary-button" type="button" data-action="clear-section">清空本项</button>` : ""}
+              ${!["application", "platform"].includes(section) ? `<button class="secondary-button" type="button" data-action="clear-section">清空本项</button>` : ""}
               <button class="primary-button" type="button" data-action="next-section">${SECTION_ORDER.indexOf(section) === SECTION_ORDER.length - 1 ? "保存岗位资料" : "保存并下一项"}</button>
             </div>
           </div>
@@ -1115,7 +1241,7 @@ function renderEditor() {
 function editorHint(section) {
   if (section === "application") return "从个人设置自动带入";
   if (["position", "compensation", "policy"].includes(section)) return "以自由文字补充为主";
-  return "AI已整理，可直接修改";
+  return "资料框架，可直接补充";
 }
 
 function editorField(job, path, label, placeholder = "", options = {}) {
@@ -1129,7 +1255,7 @@ function editorField(job, path, label, placeholder = "", options = {}) {
 
 function renderEditorSection(job, section) {
   if (section === "city") {
-    return `<div class="editor-intro"><h2>城市概况</h2><p>城市数据适合结构化展示，综合介绍可以由AI生成后再修改。</p></div><div class="editor-fields">
+    return `<div class="editor-intro"><h2>城市概况</h2><p>城市数据适合结构化展示，可由 Codex 联网核实后补充并人工确认。</p></div><div class="editor-fields">
       ${editorField(job, "sections.city.cityPosition", "城市定位")}
       ${editorField(job, "sections.city.population", "常住人口及年份")}
       ${editorField(job, "sections.city.gdp", "GDP及年份")}
@@ -1149,7 +1275,7 @@ function renderEditorSection(job, section) {
   }
 
   if (section === "platform") {
-    return `<div class="editor-intro"><h2>医院与科室</h2><p>医院和科室资料可以被同一单位的其他岗位继续复用。</p></div><div class="editor-fields">
+    return `<div class="editor-intro"><h2>医院与科室</h2><p>医院资料按同院共享，科室资料按同院同科室共享；跨院区信息请分别注明，工作地址和交通只属于当前岗位。</p></div><div class="editor-fields">
       ${editorField(job, "sections.platform.hospitalNature", "医院性质")}
       ${editorField(job, "sections.platform.grade", "医院等级")}
       ${editorField(job, "sections.platform.hospitalType", "医院类型")}
@@ -1170,12 +1296,12 @@ function renderEditorSection(job, section) {
       ${editorField(job, "sections.platform.research", "科研与教学平台", "", { textarea: true, span: true })}
       ${editorField(job, "sections.platform.platformAttractiveness", "猎头解读：平台吸引力", "把体量和区位转化为候选人能理解的优势", { textarea: true, span: true })}
       ${editorField(job, "sections.platform.hospitalSummary", "医院综合介绍", "", { textarea: true, span: true })}
-      ${editorField(job, "sections.platform.departmentName", "科室名称")}
-      ${editorField(job, "sections.platform.departmentLocation", "科室位置")}
+      ${editorField(job, "sections.platform.departmentName", "科室名称（修改视为名称校正）")}
+      ${editorField(job, "sections.platform.departmentLocation", "科室位置", "跨院区时分别注明院区和楼层")}
       ${editorField(job, "sections.platform.team", "团队规模")}
       ${editorField(job, "sections.platform.titleStructure", "职称结构")}
-      ${editorField(job, "sections.platform.departmentBeds", "科室床位")}
-      ${editorField(job, "sections.platform.departmentVolume", "科室业务量")}
+      ${editorField(job, "sections.platform.departmentBeds", "科室床位", "跨院区时分别注明")}
+      ${editorField(job, "sections.platform.departmentVolume", "科室业务量", "跨院区时分别注明")}
       ${editorField(job, "sections.platform.specialties", "亚专科和业务方向", "", { textarea: true })}
       ${editorField(job, "sections.platform.technology", "特色技术", "", { textarea: true })}
       ${editorField(job, "sections.platform.discipline", "学科或专科情况", "", { textarea: true })}
@@ -1237,9 +1363,12 @@ function renderEditorSection(job, section) {
 
 function saveWorkingJob() {
   const job = clone(state.workingJob);
+  const previousJob = state.data.jobs.find((item) => item.id === job.id) || null;
+  synchronizeDepartmentName(job);
   job.city = canonicalCityName(job.city);
   job.updatedAt = today();
   if (job.status !== "archived") job.status = "saved";
+  propagateSharedPlatformProfiles(state.data.jobs, job, previousJob);
   const index = state.data.jobs.findIndex((item) => item.id === job.id);
   if (index >= 0) state.data.jobs[index] = job;
   else state.data.jobs.unshift(job);
@@ -1315,7 +1444,7 @@ function renderDetailSections(job, visibleSections) {
       const facts = [
         ["城市定位", section.cityPosition], ["常住人口", section.population], ["GDP", section.gdp],
         ["经济排名", section.gdpRank], ["人均GDP", section.perCapitaGdp], ["人均可支配收入", section.disposableIncome],
-        ["经济特点", section.economy], ["教育资源", section.education], ["交通", section.transport],
+        ["经济特点", section.economy], ["教育资源", section.education], ["医疗资源", section.medical], ["交通", section.transport],
         ["住房价格", section.housingPrice],
       ];
       const text = [section.summary, section.medicalCompetition, section.housingComparison, section.attractiveness].filter(Boolean).join("\n\n");
@@ -1327,7 +1456,9 @@ function renderDetailSections(job, visibleSections) {
         ["院区", section.campuses], ["工作地址", section.address], ["周边交通", section.transit],
         ["城市区位", section.locationPosition], ["高铁/机场通达", section.campusAccess],
         ["床位体量定位", section.bedRank],
-        ["科室位置", section.departmentLocation], ["团队规模", section.team], ["职称结构", section.titleStructure],
+        ...DEPARTMENT_PROFILE_FIELDS
+          .filter((field) => field !== "departmentSummary")
+          .map((field) => [DEPARTMENT_PROFILE_LABELS[field], section[field]]),
       ];
       const text = [section.hospitalSummary, section.scaleComparison, section.platformAttractiveness, section.departmentSummary].filter(Boolean).join("\n\n");
       return `<section class="document-section" id="section-platform">${sectionTitle(index + 1, SECTION_LABELS[key])}<div class="fact-grid">${facts.map(([label, value]) => factItem(label, value)).join("")}</div>${text ? `<p>${escapeHTML(text)}</p>` : ""}</section>`;
@@ -1413,23 +1544,8 @@ function referenceDetailPage({ backAction, backLabel, actions = "", kicker, titl
   `);
 }
 
-function cityHousingComparison(city, description) {
-  if (city !== "宁波市") return description ? `<p class="comparison-copy">${escapeHTML(description)}</p>` : "";
-  const benchmarks = [
-    { city: "宁波", price: "16620元/㎡", width: 28, note: "约为杭州的48%" },
-    { city: "杭州", price: "34529元/㎡", width: 57, note: "浙江省内对比" },
-    { city: "上海", price: "60398元/㎡", width: 100, note: "长三角核心城市对比" },
-  ];
-  return `
-    <div class="housing-comparison">
-      ${benchmarks.map((item) => `<div class="housing-row">
-        <div class="housing-label"><strong>${item.city}</strong><span>${item.price}</span></div>
-        <div class="housing-track"><span style="width:${item.width}%"></span></div>
-        <small>${item.note}</small>
-      </div>`).join("")}
-    </div>
-    ${description ? `<p class="comparison-copy">${escapeHTML(description)}</p>` : ""}
-    <p class="data-note">房价为2026年9月住宅挂牌均价，属于市场参考口径，不等同于官方成交均价。</p>`;
+function cityHousingComparison(description) {
+  return description ? `<p class="comparison-copy">${escapeHTML(description)}</p>` : "";
 }
 
 function insightPanel(label, text) {
@@ -1442,7 +1558,6 @@ function renderCityDetail(city) {
   const jobs = cityProfileJobs(canonicalCity);
   if (!jobs.length) return navigate("cities");
   const field = (name) => firstAvailable(jobs, `sections.city.${name}`);
-  const rankMetric = canonicalCity === "宁波市" ? "省内第2｜全国第11" : field("gdpRank");
   const organizations = [...new Set(jobs.map((job) => job.organization).filter(Boolean))];
   const cityFacts = [
     ["城市定位", field("cityPosition")],
@@ -1469,12 +1584,12 @@ function renderCityDetail(city) {
     kicker: "城市资料",
     title: canonicalCity,
     subtitle: field("summary"),
-    metrics: [["2025年GDP", field("gdp")], ["经济总量排名", rankMetric], ["居民人均可支配收入", field("disposableIncome")], ["住宅挂牌均价", field("housingPrice")]],
+    metrics: [["地区生产总值（GDP）", field("gdp")], ["经济总量排名", field("gdpRank")], ["居民人均可支配收入", field("disposableIncome")], ["住房价格参考", field("housingPrice")]],
     sections: [
       { title: "城市概况", content: `<div class="fact-grid">${cityFacts.map(([label, value]) => factItem(label, value)).join("")}</div>` },
       { title: "经济位置与收入", content: `<div class="fact-grid">${economyFacts.map(([label, value]) => factItem(label, value)).join("")}</div>` },
       { title: "医疗资源与区域竞争", content: `<div class="fact-grid">${factItem("城市医疗资源", field("medical"))}</div>${insightPanel("竞争格局", field("medicalCompetition"))}` },
-      { title: "住房成本对比", content: cityHousingComparison(canonicalCity, field("housingComparison")) },
+      { title: "住房成本对比", content: cityHousingComparison(field("housingComparison")) },
       { title: "猎头解读", content: insightPanel("向候选人怎么讲", field("attractiveness")) },
       { title: "相关医院", content: hospitalLinks },
     ],
@@ -1687,13 +1802,16 @@ function plainText(job) {
   ].filter(Boolean).join("\n");
   add("一、城市概况", cityText);
   const platform = job.sections.platform;
+  const departmentText = DEPARTMENT_PROFILE_FIELDS
+    .filter((field) => isNonBlank(platform[field]))
+    .map((field) => `${DEPARTMENT_PROFILE_LABELS[field]}：${platform[field]}`);
   add("二、平台背景", [
     platform.hospitalSummary,
     platform.locationPosition,
     platform.campusAccess,
     platform.scaleComparison,
     platform.platformAttractiveness,
-    platform.departmentSummary,
+    ...departmentText,
   ].filter(Boolean).join("\n"));
   add("三、岗位定位", [job.sections.position.recruitmentBackground, job.sections.position.positionSummary].filter(Boolean).join("\n"));
   const requirementText = Object.entries(job.sections.requirements)
@@ -1967,6 +2085,10 @@ document.addEventListener("click", (event) => {
   }
   if (action === "save-job") return saveWorkingJob();
   if (action === "clear-section") {
+    if (state.editorSection === "platform") {
+      showToast("医院与科室资料会被关联岗位共用，请逐项修改或清空");
+      return;
+    }
     state.workingJob.sections[state.editorSection] = emptySections()[state.editorSection];
     return renderEditor();
   }
@@ -1993,7 +2115,7 @@ document.addEventListener("click", (event) => {
     state.workingJob = clone(job);
     mergeMissing(state.workingJob.sections, createCollectedSections(job));
     state.editorSection = "city";
-    showToast("已补充可识别的公开资料，请检查后保存");
+    showToast("已补充系统内可复用资料；公开资料请经 Codex 联网核实");
     return navigate(`edit/${id}`);
   }
 });
