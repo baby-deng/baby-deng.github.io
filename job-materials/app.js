@@ -9,6 +9,7 @@ const SECTION_ORDER = [
   "compensation",
   "policy",
   "application",
+  "communication",
 ];
 
 const SECTION_LABELS = {
@@ -19,7 +20,20 @@ const SECTION_LABELS = {
   compensation: "薪酬与发展",
   policy: "人才政策",
   application: "应聘方式",
+  communication: "沟通话术",
 };
+
+const POSITION_PUBLIC_FIELDS = ["headcount", "direction", "recruitmentBackground", "positionSummary"];
+const COMMUNICATION_FIELDS = [
+  { key: "communicationFirstContact", label: "首次联系", placeholder: "可复用的首次联系正文；称呼等个性化内容使用占位符。" },
+  { key: "communicationReply", label: "对方仅回复 OK", placeholder: "情景话术：仅收到 OK 时如何继续。不将收悉视为有意向或已约电话。" },
+  { key: "communicationCall", label: "10 分钟电话", placeholder: "电话提纲：了解客观发展考虑、介绍已核实信息、确认下一步。" },
+  { key: "communicationFollowup", label: "电话后微信", placeholder: "依据实际通话填写；模板内容不代表已经通话或取得推荐授权。" },
+  { key: "communicationQuestions", label: "常见问答", placeholder: "已确认信息与待核实事项分别表述，不承诺未经院方确认的职务、待遇或资源。" },
+  { key: "communicationNotes", label: "核实清单", placeholder: "需要向院方确认的问题、使用边界及来源日期。" },
+  { key: "communicationSentExample", label: "已发送示例", placeholder: "仅保存实际已发送的原文，注明发送日期和场景；更新通用话术时保留原文。" },
+];
+const COMMUNICATION_KEYS = ["communicationVersion", ...COMMUNICATION_FIELDS.map((field) => field.key)];
 
 const SHARED_HOSPITAL_FIELDS = [
   "hospitalNature", "grade", "hospitalType", "affiliation", "history", "campuses",
@@ -515,6 +529,7 @@ function emptySections() {
       direction: "",
       recruitmentBackground: "",
       positionSummary: "",
+      ...Object.fromEntries(COMMUNICATION_KEYS.map((key) => [key, ""])),
     },
     requirements: {
       direction: "",
@@ -725,6 +740,22 @@ function propagateSharedPlatformProfiles(jobs, sourceJob, previousJob = null) {
   });
 }
 
+function sectionHasContent(job, key) {
+  if (key === "communication") return COMMUNICATION_KEYS.some((field) => isNonBlank(job.sections?.position?.[field]));
+  if (key === "position") return POSITION_PUBLIC_FIELDS.some((field) => isNonBlank(job.sections?.position?.[field]));
+  return hasValues(job.sections?.[key]);
+}
+
+function clearJobSection(job, key) {
+  if (["communication", "position"].includes(key)) {
+    if (!job.sections.position) job.sections.position = {};
+    const fields = key === "communication" ? COMMUNICATION_KEYS : POSITION_PUBLIC_FIELDS;
+    fields.forEach((field) => { job.sections.position[field] = ""; });
+    return;
+  }
+  job.sections[key] = emptySections()[key];
+}
+
 function sectionState(job, key) {
   if (key === "application") return "固定内容";
   if (key === "platform") {
@@ -736,7 +767,7 @@ function sectionState(job, key) {
     if (hasDepartmentProfile) return "科室已有";
     return "空";
   }
-  return hasValues(job.sections?.[key]) ? "有内容" : "空";
+  return sectionHasContent(job, key) ? "有内容" : "空";
 }
 
 function statusLabel(status) {
@@ -1242,6 +1273,7 @@ function renderEditor() {
 
 function editorHint(section) {
   if (section === "application") return "从个人设置自动带入";
+  if (section === "communication") return "仅内部沟通参考 · 按当前岗位保存";
   if (["position", "compensation", "policy"].includes(section)) return "以自由文字补充为主";
   return "资料框架，可直接补充";
 }
@@ -1256,6 +1288,13 @@ function editorField(job, path, label, placeholder = "", options = {}) {
 }
 
 function renderEditorSection(job, section) {
+  if (section === "communication") {
+    return `<div class="editor-intro"><h2>沟通话术</h2><p>按当前岗位维护通用话术，并保留实际已发送示例。仅内部沟通参考，不进入“复制介绍”或 Word 导出；话术内容不代表真实沟通结果。</p></div><div class="editor-fields">
+      ${editorField(job, "sections.position.communicationVersion", "更新时间 / 版本", "例如：2026-11-27 v1", { span: true })}
+      ${COMMUNICATION_FIELDS.map((field) => editorField(job, `sections.position.${field.key}`, field.label, field.placeholder, { textarea: true, span: true })).join("")}
+    </div>`;
+  }
+
   if (section === "city") {
     return `<div class="editor-intro"><h2>城市概况</h2><p>城市数据适合结构化展示，可由 Codex 联网核实后补充并人工确认。</p></div><div class="editor-fields">
       ${editorField(job, "sections.city.cityPosition", "城市定位")}
@@ -1385,7 +1424,7 @@ function saveWorkingJob() {
 function renderJobDetail(id) {
   const job = state.data.jobs.find((item) => item.id === id);
   if (!job) return navigate("jobs");
-  const visibleSections = SECTION_ORDER.filter((key) => key === "application" || hasValues(job.sections?.[key]));
+  const visibleSections = SECTION_ORDER.filter((key) => key === "application" || sectionHasContent(job, key));
   const metrics = [
     [job.sections.platform.grade, "医院等级"],
     [job.sections.platform.beds, "医院床位"],
@@ -1441,6 +1480,19 @@ function factItem(label, value) {
 
 function renderDetailSections(job, visibleSections) {
   return visibleSections.map((key, index) => {
+    if (key === "communication") {
+      const position = job.sections.position || {};
+      const version = String(position.communicationVersion || "").trim();
+      const items = COMMUNICATION_FIELDS.filter((field) => isNonBlank(position[field.key]));
+      return `<section class="document-section communication-section" id="section-communication">
+        ${sectionTitle(index + 1, SECTION_LABELS[key])}
+        <div class="communication-notice"><strong>仅内部沟通参考</strong><span>逐项展开、复制使用；情景模板不代表真实沟通结果。${version ? `　版本：${escapeHTML(version)}` : ""}</span></div>
+        <div class="communication-list">${items.map((field) => `<details class="communication-item">
+          <summary>${escapeHTML(field.label)}</summary>
+          <div class="communication-item-body"><p>${escapeHTML(position[field.key])}</p><button class="secondary-button compact-button" type="button" data-action="copy-communication" data-id="${escapeHTML(job.id)}" data-field="${field.key}" aria-label="复制${escapeHTML(field.label)}">复制本条</button></div>
+        </details>`).join("")}</div>
+      </section>`;
+    }
     const section = job.sections[key] || {};
     if (key === "city") {
       const facts = [
@@ -1845,6 +1897,18 @@ async function copyJob(job) {
   }
 }
 
+async function copyCommunication(job, fieldKey) {
+  const field = COMMUNICATION_FIELDS.find((item) => item.key === fieldKey);
+  const text = field ? String(job.sections?.position?.[field.key] || "") : "";
+  if (!text.trim()) return;
+  try {
+    await navigator.clipboard.writeText(text);
+    showToast(`${field.label}已复制`);
+  } catch {
+    showToast("浏览器未允许复制，请展开后手动选择正文复制");
+  }
+}
+
 function exportWord(job) {
   const safeTitle = `${job.organization}_${job.role}`.replace(/[\\/:*?"<>|]/g, "_");
   const content = plainText(job).split("\n").map((line) => line ? `<p>${escapeHTML(line)}</p>` : "<br>").join("");
@@ -2091,7 +2155,7 @@ document.addEventListener("click", (event) => {
       showToast("医院与科室资料会被关联岗位共用，请逐项修改或清空");
       return;
     }
-    state.workingJob.sections[state.editorSection] = emptySections()[state.editorSection];
+    clearJobSection(state.workingJob, state.editorSection);
     return renderEditor();
   }
   if (action === "blank-draft") {
@@ -2104,6 +2168,11 @@ document.addEventListener("click", (event) => {
   if (action === "copy-job") {
     const job = state.data.jobs.find((item) => item.id === id);
     if (job) copyJob(job);
+    return;
+  }
+  if (action === "copy-communication") {
+    const job = state.data.jobs.find((item) => item.id === id);
+    if (job) void copyCommunication(job, actionButton.dataset.field);
     return;
   }
   if (action === "export-word") {
